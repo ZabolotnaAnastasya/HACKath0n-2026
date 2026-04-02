@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Віртуальне середовище
+.venv/
+venv/
+env/
+
+# IDE та редактори
+.idea/
+.vscode/
+*.swp
+
+# Локальні дані та логи (ЩОБ НЕ ПУШИТИ ВАЖКІ ФАЙЛИ)
+data/uploads/*
+*.BIN
+*.csv
+trajectory_output.json
+
+# ОС файли
+.DS_Store
+Thumbs.db
