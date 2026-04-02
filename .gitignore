@@ -1,0 +1,30 @@
+# Віртуальне середовище
+.venv/
+venv/
+ENV/
+
+# Бінарні логи ArduPilot
+*.BIN
+*.log
+*.tlog
+
+# Результати обробки (JSON)
+trajectory_output.json
+
+# Тимчасові файли Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Налаштування IDE (PyCharm / VS Code)
+.idea/
+.vscode/
+
+# Системні файли macOS
+.DS_Store
+
+.venv/
+*.BIN
+*.csv
+trajectory_output.json
+.idea/
