@@ -5,3 +5,4 @@ uvicorn
 numpy
 scipy
 pydantic
+python-multipart
