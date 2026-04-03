@@ -1,0 +1,7 @@
+pandas
+pymavlink
+fastapi
+uvicorn
+numpy
+scipy
+pydantic
