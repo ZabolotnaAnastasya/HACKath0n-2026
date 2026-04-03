@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from .engine import NavigationEngine
 
-
 class NavigationFusion:
     def __init__(self):
         self.engine = NavigationEngine()
@@ -13,7 +12,6 @@ class NavigationFusion:
     def process_flight_data(self, imu_df: pd.DataFrame, gps_df: pd.DataFrame):
         if gps_df.empty or imu_df.empty:
             return []
-
 
         imu_df = imu_df.sort_values('TimeUS')
         gps_df = gps_df.sort_values('TimeUS')

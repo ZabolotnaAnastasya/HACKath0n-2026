@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-
 class NavigationEngine:
     def __init__(self):
         self.position = np.array([0.0, 0.0, 0.0])
@@ -26,7 +25,6 @@ class NavigationEngine:
         acc_global = self.orientation.apply(acc_body_clean)
 
         acc_linear = acc_global - self.gravity_global
-
 
         new_velocity = self.velocity + (self.accel_prev_global + acc_linear) * 0.5 * dt
         self.position += (self.velocity + new_velocity) * 0.5 * dt
