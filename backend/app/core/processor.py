@@ -6,7 +6,6 @@ class FlightProcessor:
         if not gps_points:
             return []
 
-        # 1. Знаходимо індекс зльоту
         start_alt = gps_points[0].get('alt', 0.0)
         takeoff_index = 0
         for i, p in enumerate(gps_points):
@@ -14,12 +13,10 @@ class FlightProcessor:
                 takeoff_index = i
                 break
 
-        # 2. Відрізаємо час простою на землі
         flight_points = gps_points[takeoff_index:]
         if not flight_points:
             flight_points = gps_points
 
-        # 3. Точка старту
         origin_pt = flight_points[0]
         origin_lat = origin_pt['lat']
         origin_lng = origin_pt['lng']
@@ -31,8 +28,6 @@ class FlightProcessor:
         meters_per_degree_lng = 111320.0 * math.cos(lat_rad)
 
         processed = []
-
-        # 4. Формуємо фінальний масив
         for p in flight_points:
             d_lat = p['lat'] - origin_lat
             d_lng = p['lng'] - origin_lng
@@ -53,5 +48,4 @@ class FlightProcessor:
                 "lon": p['lng'],
                 "alt_abs": p.get('alt', 0.0)
             })
-
         return processed

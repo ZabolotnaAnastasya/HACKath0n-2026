@@ -14,16 +14,10 @@ class NavigationEngine:
         if dt <= 0:
             return self.position, np.linalg.norm(self.velocity)
 
-        # Оновлення орієнтації
         delta_rot = R.from_rotvec(gyr_raw * dt)
         self.orientation = self.orientation * delta_rot
-
-        # Очищення від байасу (в системі координат дрона)
         acc_body_clean = acc_raw - self.accel_bias_body
-
-        # Перетворення в глобальну систему ENU
         acc_global = self.orientation.apply(acc_body_clean)
-
         acc_linear = acc_global - self.gravity_global
 
         new_velocity = self.velocity + (self.accel_prev_global + acc_linear) * 0.5 * dt
