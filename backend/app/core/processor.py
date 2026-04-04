@@ -1,13 +1,12 @@
 import math
 
-
 class FlightProcessor:
     @staticmethod
     def convert_to_local_system(gps_points):
         if not gps_points:
             return []
 
-        # 1. Знаходимо індекс зльоту (коли висота змінилася хоча б на 1 метр від початкової)
+        # 1. Знаходимо індекс зльоту
         start_alt = gps_points[0].get('alt', 0.0)
         takeoff_index = 0
         for i, p in enumerate(gps_points):
@@ -20,7 +19,7 @@ class FlightProcessor:
         if not flight_points:
             flight_points = gps_points
 
-        # 3. Тепер наша ПЕРША точка в обрізаному масиві - це ідеальний старт (0,0,0)
+        # 3. Точка старту
         origin_pt = flight_points[0]
         origin_lat = origin_pt['lat']
         origin_lng = origin_pt['lng']

@@ -1,6 +1,5 @@
 from pymavlink import mavutil
 
-
 class LogParser:
     def __init__(self, file_path):
         # Шлях до бінарного файлу логу
@@ -31,10 +30,7 @@ class LogParser:
             m_type = msg.get_type()
 
             # --- ЗБИРАЄМО ДАНІ ДЛЯ ВАНІ (Координати) ---
-
             if m_type == 'POS':
-                # Якщо це перше повідомлення POS у файлі, очищаємо все,
-                # що могли випадково зібрати з гіршого GPS до цього.
                 if not found_pos:
                     gps_data.clear()
                     found_pos = True
@@ -48,19 +44,16 @@ class LogParser:
                 })
 
             elif m_type == 'GPS' and not found_pos:
-                # Збираємо звичайний GPS тільки якщо точного POS немає у файлі взагалі.
-                # Status >= 3 означає, що дрон зловив достатньо супутників для точної позиції.
                 if getattr(msg, 'Status', 0) >= 3:
                     gps_data.append({
                         "timestamp": getattr(msg, 'TimeUS', 0),
                         "lat": getattr(msg, 'Lat', 0),
                         "lng": getattr(msg, 'Lng', 0),
-                        "alt": getattr(msg, 'Alt', 0),  # Висота над рівнем моря
+                        "alt": getattr(msg, 'Alt', 0),
                         "speed": getattr(msg, 'Spd', 0)
                     })
 
             # --- ЗБИРАЄМО ДАНІ ДЛЯ НАСТІ (Сенсори руху) ---
-
             elif m_type == 'IMU':
                 current_time = getattr(msg, 'TimeUS', 0) / 1_000_000.0
 
