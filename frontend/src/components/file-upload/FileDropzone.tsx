@@ -23,8 +23,7 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
 
     const handleUploadClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        startUpload();
-        onFileSelect();
+        startUpload(onFileSelect);
     };
 
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +76,7 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
                 )}
 
                 {uploadError && (
-                    <p className="text-red-500">Error: {uploadError}</p>
+                    <p className="text-red-500 mt-2">server or file problem</p>
                 )}
             </div>
         </div>

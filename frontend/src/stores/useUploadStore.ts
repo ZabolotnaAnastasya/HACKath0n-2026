@@ -3,8 +3,12 @@ import type { TrajectoryPoint } from "../types/trajectory";
 import { fetchTrajectory, type TrajectoryResponse } from "../config/backend";
 
 export interface AnalysisData {
-  maxSpeed: number;
-  totalPoints: number;
+  maxHorizontalSpeed: number;
+  maxVerticalSpeed: number;
+  maxAcceleration: number;
+  maxClimb: number;
+  totalDistance: number;
+  totalDuration: number;
   llmResponse: string;
 }
 
@@ -46,14 +50,18 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
         time_s: point.time_s,
         lat: point.lat,
         lon: point.lon,
-        abs_alt: point.abs_alt,
+        alt_abs: point.alt_abs,
       }));
 
       if (response.analysis) {
         set({
           analysis: {
-            maxSpeed: response.analysis.max_speed,
-            totalPoints: response.analysis.total_points,
+            maxHorizontalSpeed: response.analysis.max_horizontal_speed,
+            maxVerticalSpeed: response.analysis.max_vertical_speed,
+            maxAcceleration: response.analysis.max_acceleration,
+            maxClimb: response.analysis.max_climb,
+            totalDistance: response.analysis.total_distance,
+            totalDuration: response.analysis.total_duration,
             llmResponse: response.analysis.llm_response,
           },
         });
