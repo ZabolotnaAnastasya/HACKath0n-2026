@@ -1,7 +1,7 @@
 from pymavlink import mavutil
 
 class LogParser:
-    def __init__(self, file_path):
+    def __init__(self, file_path: str):
         self.file_path = file_path
 
     def parse_telemetry(self):
@@ -12,58 +12,40 @@ class LogParser:
         last_imu_time = None
         found_pos = False
 
-        # Змінні для збереження останніх відомих похибок
-        last_hacc = 2.0  # Дефолт 2 метри
-        last_sacc = 0.5  # Дефолт 0.5 м/с
-
         while True:
-            # Додаємо GPA в список типів, які ми очікуємо від mlink
-            msg = mlog.recv_match(type=['POS', 'GPS', 'GPA', 'IMU', 'ATT'], blocking=False)
+            msg = mlog.recv_match(type=['POS', 'GPS', 'IMU', 'ATT'], blocking=False)
             if msg is None:
                 break
 
             m_type = msg.get_type()
 
-            # Обробка похибок GPS Accuracy
-            if m_type == 'GPA':
-                last_hacc = getattr(msg, 'HAcc', 2.0)
-                last_sacc = getattr(msg, 'SAcc', 0.5)
-
-            elif m_type == 'POS':
+            if m_type == 'POS':
                 if not found_pos:
                     gps_data.clear()
                     found_pos = True
                 gps_data.append({
+                    "TimeUS": msg.TimeUS,
                     "timestamp": msg.TimeUS,
                     "lat": msg.Lat,
                     "lng": msg.Lng,
                     "alt": msg.RelAlt,
-                    "speed": getattr(msg, 'Spd', 0.0),
-                    "course": getattr(msg, 'GCrs', 0.0),
-                    "vz": getattr(msg, 'VZ', 0.0),
-                    "h_acc": last_hacc, # Додаємо динамічну похибку
-                    "s_acc": last_sacc  # Додаємо динамічну похибку
+                    "speed": getattr(msg, 'Spd', 0)
                 })
 
             elif m_type == 'GPS' and not found_pos:
                 if getattr(msg, 'Status', 0) >= 3:
                     gps_data.append({
+                        "TimeUS": getattr(msg, 'TimeUS', 0),
                         "timestamp": getattr(msg, 'TimeUS', 0),
                         "lat": getattr(msg, 'Lat', 0),
                         "lng": getattr(msg, 'Lng', 0),
                         "alt": getattr(msg, 'Alt', 0),
-                        "speed": getattr(msg, 'Spd', 0.0),
-                        "course": getattr(msg, 'GCrs', 0.0),
-                        "vz": getattr(msg, 'VZ', 0.0),
-                        "h_acc": last_hacc, # Додаємо динамічну похибку
-                        "s_acc": last_sacc  # Додаємо динамічну похибку
+                        "speed": getattr(msg, 'Spd', 0)
                     })
 
             elif m_type == 'IMU':
                 current_time = getattr(msg, 'TimeUS', 0) / 1_000_000.0
-                dt = 0.0
-                if last_imu_time is not None:
-                    dt = current_time - last_imu_time
+                dt = current_time - last_imu_time if last_imu_time else 0.0
                 last_imu_time = current_time
 
                 imu_data.append({

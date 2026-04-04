@@ -1,7 +1,12 @@
 import numpy as np
 from scipy.interpolate import CubicSpline
 
+
 def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
+    """
+    Згладжує траєкторію за допомогою кубічних сплайнів
+    та повертає структуру, яку вимагає Ваня.
+    """
     n = len(trajectory)
     if n <= target_points or target_points < 3:
         return trajectory
@@ -15,41 +20,50 @@ def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
             seen_times.add(p['time_s'])
 
     n_unique = len(unique_traj)
-
-    # 2. Обов'язково старт і фініш
     essential_indices = {0, n_unique - 1}
 
-    # 3. Вибираємо топ точок за показником 'importance' (з IMU)
+    # 2. Вибираємо найважливіші точки на основі прискорення (importance)
     scores = []
     for i in range(1, n_unique - 1):
         scores.append((i, unique_traj[i].get('importance', 0)))
 
     scores.sort(key=lambda x: x[1], reverse=True)
 
-    # Додаємо індекси найкращих точок
     num_to_add = min(target_points - 2, len(scores))
     for i in range(num_to_add):
         essential_indices.add(scores[i][0])
 
-    # 4. Створюємо "кістяк" (skeleton)
     skeleton_indices = sorted(list(essential_indices))
     skeleton_points = [unique_traj[i] for i in skeleton_indices]
 
-    # 5. Сплайн-інтерполяція для плавності в 3D (X, Y, Z)
     t_skel = np.array([p['time_s'] for p in skeleton_points])
-    coords_skel = np.array([[p['x'], p['y'], p['z']] for p in skeleton_points])
 
-    # Створюємо кубічний сплайн
+    # 3. Створюємо сплайни для всіх полів
+    # Координати ENU
+    coords_skel = np.array([[p['x'], p['y'], p['z']] for p in skeleton_points])
     cs = CubicSpline(t_skel, coords_skel, bc_type='natural')
 
-    # 6. Генеруємо фінальну рівномірну сітку точок
+    # Гео-координати (lat, lon, alt_abs) — ТЕ, ЩО ТРЕБА ВАНІ
+    lats_skel = np.array([p.get('lat', 0.0) for p in skeleton_points])
+    lons_skel = np.array([p.get('lon', 0.0) for p in skeleton_points])
+    alts_skel = np.array([p.get('alt_abs', 0.0) for p in skeleton_points])
+
+    cs_lat = CubicSpline(t_skel, lats_skel, bc_type='natural')
+    cs_lon = CubicSpline(t_skel, lons_skel, bc_type='natural')
+    cs_alt = CubicSpline(t_skel, alts_skel, bc_type='natural')
+
+    # 4. Генеруємо фінальну сітку
     t_final = np.linspace(t_skel[0], t_skel[-1], target_points)
+
     coords_final = cs(t_final)
-    
-    # Перша похідна для розрахунку швидкості
+    lats_final = cs_lat(t_final)
+    lons_final = cs_lon(t_final)
+    alts_final = cs_alt(t_final)
+
+    # Швидкість (перша похідна сплайна)
     velocities = np.linalg.norm(cs(t_final, 1), axis=1)
 
-    # Формуємо результат для API
+    # 5. Формуємо вихідний JSON
     optimized_output = []
     for i in range(len(t_final)):
         optimized_output.append({
@@ -57,7 +71,10 @@ def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
             "x": round(float(coords_final[i][0]), 2),
             "y": round(float(coords_final[i][1]), 2),
             "z": round(float(coords_final[i][2]), 2),
-            "speed": round(float(velocities[i]), 2)
+            "speed": round(float(velocities[i]), 2),
+            "lat": round(float(lats_final[i]), 7),
+            "lon": round(float(lons_final[i]), 7),
+            "alt_abs": round(float(alts_final[i]), 2)
         })
 
     return optimized_output

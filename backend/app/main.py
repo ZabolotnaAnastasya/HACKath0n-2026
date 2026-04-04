@@ -15,7 +15,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Підключаємо наші ендпоінти
 app.include_router(router, prefix="/api/v1")
 
 @app.get("/")
