@@ -80,7 +80,7 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             "max_climb": round(max_climb, 2),
             "total_distance": round(total_dist, 2),
             "total_duration": round(duration, 2),
-            "llm_response": "Аналіз завершено. Очікується підключення АІ-модуля."[cite: 25]
+            "llm_response": "Аналіз завершено. Очікується підключення АІ-модуля."
         }
 
         return {
