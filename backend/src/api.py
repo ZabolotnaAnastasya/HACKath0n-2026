@@ -1,20 +1,23 @@
 import os
-import shutil
 import pandas as pd
 from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
+from scipy.interpolate import interp1d
 
-# ІМПОРТУЄМО ТВОЇ КЛАСИ ТА КЛАСИ НАСТІ
+# Спробуй імпорти БЕЗ src. якщо ти зробив backend Sources Root,
+# або ЗАЛИШ з src., якщо запускаєш через Docker.
 from core.parser import LogParser
 from core.processor import FlightProcessor
 from services.navigation.fusion import NavigationFusion
-from services.navigation.optimizer import optimize_trajectory  # Імпорт гібридного оптимізатора
+from services.navigation.optimizer import optimize_trajectory
 
-app = FastAPI(title="Drone Telemetry API", description="Бекенд для обробки логів дрона")
+app = FastAPI(title="Drone Telemetry API")
 
+# CORS налаштування
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_URL, "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,73 +30,66 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.post("/api/v1/process-log")
 async def process_log(
         file: UploadFile = File(...),
-        max_points: int = Query(100, description="Ліміт точок для 3D рендеру")
+        max_points: int = Query(500, description="Limit points")
 ):
-    """
-    Головний ендпоінт. Парсить лог, проганяє через фільтр Калмана (UKF)
-    та оптимізує 3D траєкторію за допомогою кубічних сплайнів.
-    """
     file_path = os.path.join(UPLOAD_DIR, file.filename)
+
+    # Використовуємо прямий запис без shutil
+    content = await file.read()
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(content)
 
     try:
-        # 1. EXTRACT
         parser = LogParser(file_path)
-        gps_raw, imu_raw, att_raw = parser.parse_telemetry()
+        gps_raw, imu_raw, _ = parser.parse_telemetry()
 
         if not gps_raw:
-            return {"status": "error", "message": "Не знайдено GPS даних у лозі"}
+            return {"status": "error", "message": "No GPS data"}
 
-        # 2. TRANSFORM
         full_data = FlightProcessor.convert_to_local_system(gps_raw)
-
-        trajectory_3d_raw = [{"time_s": p["time_s"], "x": p["x"], "y": p["y"], "z": p["z"], "speed": p["speed"]} for p
-                             in full_data]
-        map_data = [{"time_s": p["time_s"], "lat": p["lat"], "lon": p["lon"], "alt_abs": p["alt_abs"]} for p in
-                    full_data]
-
-        df_imu = pd.DataFrame(imu_raw).drop_duplicates(subset=['time_s'], keep='first')
+        df_imu = pd.DataFrame(imu_raw).drop_duplicates(subset=['time_s'])
         df_gps = pd.DataFrame(full_data)
 
-        # 3. ІНТЕГРАЦІЯ З НАСТЕЮ (UKF Fusion)
-        print("Передаю дані в клас NavigationFusion...")
-
-        df_imu_nastya = df_imu.rename(columns={
-            'time_s': 'TimeUS', 'acc_x': 'AccX', 'acc_y': 'AccY', 'acc_z': 'AccZ',
-            'gyr_x': 'GyrX', 'gyr_y': 'GyrY', 'gyr_z': 'GyrZ'
-        })
-        df_imu_nastya['TimeUS'] = df_imu_nastya['TimeUS'] * 1e6
-
-        df_gps_nastya = df_gps.rename(columns={
-            'time_s': 'TimeUS', 'x': 'x_enu', 'y': 'y_enu', 'z': 'z_enu'
-        })
-        df_gps_nastya['TimeUS'] = df_gps_nastya['TimeUS'] * 1e6
+        df_imu['TimeUS'] = df_imu['time_s'] * 1e6
+        df_gps['TimeUS'] = df_gps['time_s'] * 1e6
 
         fusion_module = NavigationFusion()
-        nastya_smart_trajectory = fusion_module.process_flight_data(df_imu_nastya, df_gps_nastya)
 
-        # 4. ОПТИМІЗАЦІЯ ДЛЯ ФРОНТЕНДУ (Сплайни)
-        print(f"Оптимізую траєкторію через CubicSpline до {max_points} точок...")
+        # Перейменування для Насті
+        imu_in = df_imu.rename(columns={
+            'acc_x': 'AccX', 'acc_y': 'AccY', 'acc_z': 'AccZ',
+            'gyr_x': 'GyrX', 'gyr_y': 'GyrY', 'gyr_z': 'GyrZ'
+        })
+        gps_in = df_gps.rename(columns={'x': 'x_enu', 'y': 'y_enu', 'z': 'z_enu'})
 
-        optimized_smart = optimize_trajectory(nastya_smart_trajectory, target_points=max_points)
-        optimized_raw = optimize_trajectory(trajectory_3d_raw, target_points=max_points)
+        smart_traj = fusion_module.process_flight_data(imu_in, gps_in)
 
-        # 5. LOAD
+        # Оптимізація та інтерполяція
+        optimized_points = optimize_trajectory(smart_traj, target_points=max_points)
+
+        raw_t = df_gps['time_s'].values
+        f_lat = interp1d(raw_t, df_gps['lat'].values, fill_value="extrapolate")
+        f_lon = interp1d(raw_t, df_gps['lon'].values, fill_value="extrapolate")
+        f_alt = interp1d(raw_t, df_gps['alt_abs'].values, fill_value="extrapolate")
+
+        final_data = []
+        for p in optimized_points:
+            t = p['time_s']
+            final_data.append({
+                "x": p['x'], "y": p['y'], "z": p['z'],
+                "speed": p['speed'], "time_s": t,
+                "lat": float(f_lat(t)), "lon": float(f_lon(t)), "abs_alt": float(f_alt(t))
+            })
+
         return {
             "status": "success",
-            "filename": file.filename,
-            "telemetry": {
-                "trajectory_3d_smart": optimized_smart,
-                "trajectory_3d_raw": optimized_raw,
-                "map_data": map_data
+            "data": final_data,
+            "analysis": {
+                "max_speed": round(float(max([p['speed'] for p in final_data])), 2),
+                "total_points": len(final_data),
+                "llm_response": "Stable flight detected."
             },
-            "meta": {
-                "points_original": len(nastya_smart_trajectory) if nastya_smart_trajectory else len(trajectory_3d_raw),
-                "points_optimized": len(optimized_smart),
-                "algorithm": "CubicSpline + UKF Fusion",
-                "max_points_limit": max_points
-            }
+            "meta": {"filename": file.filename}
         }
 
     except Exception as e:
