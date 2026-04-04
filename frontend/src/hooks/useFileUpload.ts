@@ -1,0 +1,71 @@
+import { useState, useCallback } from "react";
+import type { FileRejection } from "react-dropzone";
+import { useFileLoadStore } from "../stores/useFileLoadStore";
+import { useUploadStore } from "../stores/useUploadStore";
+import { useTrajectoryStore } from "../stores/useTrajectoryStore";
+import { useMaxPointsStore } from "../stores/useMaxPointsStore";
+
+interface UseFileUploadReturn {
+    tempFile: File | null;
+    isUploadStarted: boolean;
+    isUploading: boolean;
+    uploadError: string | null;
+    onDrop: (acceptedFiles: File[], rejectedFiles: FileRejection[]) => void;
+    startUpload: () => void;
+    clearTempFile: () => void;
+}
+
+export const useFileUpload = (): UseFileUploadReturn => {
+    const { setFile } = useFileLoadStore();
+    const { uploadFile, isUploading, error: uploadError, clearUpload } = useUploadStore();
+    const { maxPoints } = useMaxPointsStore();
+    const setIsLoading = useTrajectoryStore((state) => state.setIsLoading);
+    const setActivePoint = useTrajectoryStore((state) => state.setActivePoint);
+    const [tempFile, setTempFile] = useState<File | null>(null);
+    const [isUploadStarted, setIsUploadStarted] = useState(false);
+
+    const onDrop = useCallback(
+        (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
+            if (acceptedFiles.length > 0) {
+                setTempFile(acceptedFiles[0]);
+                setIsUploadStarted(false);
+                clearUpload();
+            }
+            rejectedFiles.forEach(() => {
+                setTempFile(null);
+                setIsUploadStarted(false);
+                clearUpload();
+            });
+        },
+        [clearUpload]
+    );
+
+    const startUpload = useCallback(() => {
+        if (!tempFile) return;
+        setFile(tempFile);
+        setIsUploadStarted(true);
+        setIsLoading(true);
+
+        uploadFile(tempFile, maxPoints, (trajectoryData) => {
+            useTrajectoryStore.setState({ trajectoryArray: trajectoryData });
+            setActivePoint(trajectoryData[0] || null);
+            setIsLoading(false);
+        });
+    }, [tempFile, setFile, uploadFile, maxPoints, setIsLoading, setActivePoint]);
+
+    const clearTempFile = useCallback(() => {
+        setTempFile(null);
+        setIsUploadStarted(false);
+        clearUpload();
+    }, [clearUpload]);
+
+    return {
+        tempFile,
+        isUploadStarted,
+        isUploading,
+        uploadError,
+        onDrop,
+        startUpload,
+        clearTempFile
+    };
+};
