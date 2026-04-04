@@ -2,8 +2,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { TrajectoryPoint, CameraPosition } from "../types/trajectory";
 
-// ---------- Bounds & Scaling ----------
-
 interface TrajectoryBounds {
     minX: number;
     maxX: number;
@@ -32,54 +30,54 @@ export const calculateTrajectoryBounds = (points: TrajectoryPoint[]): Trajectory
     };
 };
 
-export const scaleTrajectoryToGrid = (points: TrajectoryPoint[], gridSize: number = 20): {
+export const scaleTrajectoryToGrid = (points: TrajectoryPoint[], targetSize: number = 20): {
     scaledPoints: THREE.Vector3[];
-    scale: number;
+    axisScales: { x: number; y: number; z: number };
 } => {
     if (points.length === 0) {
-        return { scaledPoints: [], scale: 1 };
+        return { scaledPoints: [], axisScales: { x: 1, y: 1, z: 1 } };
     }
 
-    // Use first point as reference (align with grid center at 0,0,0)
-    const firstPoint = points[0];
-    
-    // Calculate ranges relative to first point
-    const xValues = points.map(p => p.x - firstPoint.x);
-    const yValues = points.map(p => p.y - firstPoint.y);
-    const zValues = points.map(p => p.z - firstPoint.z);
+    const xValues = points.map(p => p.x);
+    const yValues = points.map(p => p.y);
+    const zValues = points.map(p => p.z);
 
-    const rangeX = Math.max(...xValues) - Math.min(...xValues) || 1;
-    const rangeY = Math.max(...yValues) - Math.min(...yValues) || 1;
-    const rangeZ = Math.max(...zValues) - Math.min(...zValues) || 1;
+    const dataMinX = Math.min(...xValues);
+    const dataMaxX = Math.max(...xValues);
+    const dataMinY = Math.min(...yValues);
+    const dataMaxY = Math.max(...yValues);
+    const dataMinZ = Math.min(...zValues);
+    const dataMaxZ = Math.max(...zValues);
 
-    // Use the largest range for uniform scaling
-    const maxRange = Math.max(rangeX, rangeY, rangeZ);
-    const scale = (gridSize * 0.8) / maxRange;
+    const rangeX = dataMaxX - dataMinX || 1;
+    const rangeY = dataMaxY - dataMinY || 1;
+    const rangeZ = dataMaxZ - dataMinZ || 1;
 
-    // Scale points relative to first point (which will be at 0,0,0)
+    const axisScales = {
+        x: targetSize / rangeX,
+        y: targetSize / rangeY,
+        z: targetSize / rangeZ
+    };
+
     const scaledPoints = points.map(p => new THREE.Vector3(
-        (p.x - firstPoint.x) * scale,
-        (p.y - firstPoint.y) * scale,
-        (p.z - firstPoint.z) * scale
+        p.x * axisScales.x,
+        p.y * axisScales.y,
+        p.z * axisScales.z
     ));
 
     return {
         scaledPoints,
-        scale
+        axisScales
     };
 };
-
-// ---------- Camera Setup ----------
 
 export const setupCameraForTopView = (gridSize: number = 20): CameraPosition => {
     return {
         x: 0,
         y: 0,
-        z: gridSize * 1.5 // Top-down view
+        z: gridSize * 1.5
     };
 };
-
-// ---------- Scene Creation ----------
 
 interface CreateSceneParams {
     container: HTMLDivElement;
@@ -103,10 +101,8 @@ export const createScene = ({ container, cameraPosition }: CreateSceneParams): C
 
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
     camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
-    
-    // Set camera for Z-up coordinate system (Z is vertical upward)
     camera.lookAt(0, 0, 0);
-    camera.up.set(0, 0, 1); // Z is up
+    camera.up.set(0, 0, 1);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
@@ -116,8 +112,6 @@ export const createScene = ({ container, cameraPosition }: CreateSceneParams): C
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0);
-    
-    // Camera constraints for Z-up system
     controls.minDistance = 2;
     controls.maxDistance = 50;
     controls.minPolarAngle = 0;
@@ -128,22 +122,13 @@ export const createScene = ({ container, cameraPosition }: CreateSceneParams): C
     return { scene, camera, renderer, controls, raycaster };
 };
 
-// ---------- Grid ----------
-
-// Nice Numbers Algorithm for dynamic step calculation
 const calculateNiceStep = (range: number, targetDivisions: number = 8): number => {
     if (range <= 0) return 1;
     
-    // Calculate the rough step size
     const roughStep = range / targetDivisions;
-    
-    // Determine the exponent (order of magnitude)
     const exponent = Math.floor(Math.log10(roughStep));
-    
-    // Calculate the fraction
     const fraction = roughStep / Math.pow(10, exponent);
     
-    // Snap to human-friendly values: {1,2,5,10,20,50,100,200,500,1000...}
     let niceFraction: number;
     if (fraction < 1.5) {
         niceFraction = 1;
@@ -158,7 +143,6 @@ const calculateNiceStep = (range: number, targetDivisions: number = 8): number =
     return niceFraction * Math.pow(10, exponent);
 };
 
-// Create text sprite with black outline for maximum contrast
 const createBillboardLabel = (text: string, size: number = 0.5): THREE.Sprite => {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
@@ -170,12 +154,10 @@ const createBillboardLabel = (text: string, size: number = 0.5): THREE.Sprite =>
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     
-    // Black outline for contrast
     context.strokeStyle = 'black';
     context.lineWidth = 3;
     context.strokeText(text, canvas.width / 2, canvas.height / 2);
     
-    // White fill
     context.fillStyle = 'white';
     context.fillText(text, canvas.width / 2, canvas.height / 2);
     
@@ -192,114 +174,162 @@ const createBillboardLabel = (text: string, size: number = 0.5): THREE.Sprite =>
     return sprite;
 };
 
-// Check for label collisions in screen space
 const checkLabelCollision = (pos1: THREE.Vector3, pos2: THREE.Vector3, threshold: number = 1.0): boolean => {
     return pos1.distanceTo(pos2) < threshold;
 };
 
-// Mathematical coordinate grid measurement system
-export const createDataDrivenGridRulers = (scaledPoints?: THREE.Vector3[], originalPoints?: TrajectoryPoint[]): THREE.Group => {
+const isWithinGridBounds = (pos: THREE.Vector3, bounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }, margin: number = 0.5): boolean => {
+    return pos.x >= bounds.minX - margin && pos.x <= bounds.maxX + margin &&
+           pos.y >= bounds.minY - margin && pos.y <= bounds.maxY + margin &&
+           pos.z >= bounds.minZ - margin && pos.z <= bounds.maxZ + margin;
+};
+
+const clampToGridBounds = (pos: THREE.Vector3, bounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }, margin: number = 0.5): THREE.Vector3 => {
+    return new THREE.Vector3(
+        Math.max(bounds.minX + margin, Math.min(bounds.maxX - margin, pos.x)),
+        Math.max(bounds.minY + margin, Math.min(bounds.maxY - margin, pos.y)),
+        Math.max(bounds.minZ + margin, Math.min(bounds.maxZ - margin, pos.z))
+    );
+};
+
+interface AxisScales {
+    x: number;
+    y: number;
+    z: number;
+}
+
+export const createDataDrivenGridRulers = (
+    scaledPoints?: THREE.Vector3[],
+    originalPoints?: TrajectoryPoint[],
+    axisScales?: AxisScales,
+    providedGridBounds?: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }
+): THREE.Group => {
     const group = new THREE.Group();
     
-    // DATA-DRIVEN BOUNDING BOX - Calculate from raw dataset
-    let dataMinX = 0, dataMaxX = 0, dataMinY = 0, dataMaxY = 0, dataMinZ = 0, dataMaxZ = 0;
-    let sceneScale = 1;
+    let rawMinX = 0, rawMaxX = 0, rawMinY = 0, rawMaxY = 0, rawMinZ = 0, rawMaxZ = 0;
+    let scales: AxisScales = axisScales || { x: 1, y: 1, z: 1 };
+    
+    const targetSize = 20;
+    const visualPadding = 0.15;
     
     if (originalPoints && originalPoints.length > 0) {
-        // Calculate raw data bounds directly from dataset
         const xValues = originalPoints.map(p => p.x);
         const yValues = originalPoints.map(p => p.y);
         const zValues = originalPoints.map(p => p.z);
         
-        dataMinX = Math.min(...xValues);
-        dataMaxX = Math.max(...xValues);
-        dataMinY = Math.min(...yValues);
-        dataMaxY = Math.max(...yValues);
-        dataMinZ = Math.min(...zValues);
-        dataMaxZ = Math.max(...zValues);
+        rawMinX = Math.min(...xValues);
+        rawMaxX = Math.max(...xValues);
+        rawMinY = Math.min(...yValues);
+        rawMaxY = Math.max(...yValues);
+        rawMinZ = Math.min(...zValues);
+        rawMaxZ = Math.max(...zValues);
         
-        // Add 20% padding to extend grid beyond data
-        const xPadding = (dataMaxX - dataMinX) * 0.2;
-        const yPadding = (dataMaxY - dataMinY) * 0.2;
-        const zPadding = (dataMaxZ - dataMinZ) * 0.2;
-        
-        dataMinX -= xPadding;
-        dataMaxX += xPadding;
-        dataMinY -= yPadding;
-        dataMaxY += yPadding;
-        dataMinZ -= zPadding;
-        dataMaxZ += zPadding;
-        
-        // Calculate scene scaling factor if we have scaled points
-        if (scaledPoints && scaledPoints.length > 0) {
-            const scaledXValues = scaledPoints.map(p => p.x);
-            const scaledYValues = scaledPoints.map(p => p.y);
-            const scaledZValues = scaledPoints.map(p => p.z);
+        if (!axisScales) {
+            const xRange = (rawMaxX - rawMinX) || 1;
+            const yRange = (rawMaxY - rawMinY) || 1;
+            const zRange = (rawMaxZ - rawMinZ) || 1;
             
-            const scaledXRange = Math.max(...scaledXValues) - Math.min(...scaledXValues);
-            const scaledYRange = Math.max(...scaledYValues) - Math.min(...scaledYValues);
-            const scaledZRange = Math.max(...scaledZValues) - Math.min(...scaledZValues);
-            
-            const dataXRange = dataMaxX - dataMinX;
-            const dataYRange = dataMaxY - dataMinY;
-            const dataZRange = dataMaxZ - dataMinZ;
-            
-            const maxDataRange = Math.max(dataXRange, dataYRange, dataZRange);
-            const maxScaledRange = Math.max(scaledXRange, scaledYRange, scaledZRange);
-            
-            sceneScale = maxScaledRange / maxDataRange;
+            scales = {
+                x: targetSize / xRange,
+                y: targetSize / yRange,
+                z: targetSize / zRange
+            };
         }
     } else {
-        // Fallback to default bounds when no data
-        dataMinX = -10; dataMaxX = 10;
-        dataMinY = -10; dataMaxY = 10;
-        dataMinZ = -10; dataMaxZ = 10;
+        rawMinX = -10; rawMaxX = 10;
+        rawMinY = -10; rawMaxY = 10;
+        rawMinZ = -10; rawMaxZ = 10;
     }
     
-    // Calculate data ranges for Nice Numbers algorithm
-    const xDataRange = dataMaxX - dataMinX;
-    const yDataRange = dataMaxY - dataMinY;
-    const zDataRange = dataMaxZ - dataMinZ;
+    let gridBounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
     
-    // Dynamic step calculation using Nice Numbers algorithm
-    const xStep = calculateNiceStep(xDataRange);
-    const yStep = calculateNiceStep(yDataRange);
-    const zStep = calculateNiceStep(zDataRange);
+    if (providedGridBounds) {
+        gridBounds = providedGridBounds;
+    } else {
+        const visualMinX = rawMinX * scales.x * (1 - visualPadding);
+        const visualMaxX = rawMaxX * scales.x * (1 + visualPadding);
+        const visualMinY = rawMinY * scales.y * (1 - visualPadding);
+        const visualMaxY = rawMaxY * scales.y * (1 + visualPadding);
+        const visualMinZ = rawMinZ * scales.z * (1 - visualPadding);
+        const visualMaxZ = rawMaxZ * scales.z * (1 + visualPadding);
+        
+        gridBounds = {
+            minX: visualMinX,
+            maxX: visualMaxX,
+            minY: visualMinY,
+            maxY: visualMaxY,
+            minZ: visualMinZ,
+            maxZ: visualMaxZ
+        };
+    }
     
-    // UNIFIED STEP: Use largest step for spatial symmetry
-    const unifiedStep = Math.max(xStep, yStep, zStep);
+    const maxSceneRange = Math.max(
+        gridBounds.maxX - gridBounds.minX,
+        gridBounds.maxY - gridBounds.minY,
+        gridBounds.maxZ - gridBounds.minZ
+    );
     
-    // Create base XY grid (rotated to XY plane)
-    const xyGrid = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+    const xDataRange = (rawMaxX - rawMinX) * (1 + visualPadding);
+    const yDataRange = (rawMaxY - rawMinY) * (1 + visualPadding);
+    const zDataRange = (rawMaxZ - rawMinZ) * (1 + visualPadding);
+    
+    const xStep = calculateNiceStep(xDataRange, 6);
+    const yStep = calculateNiceStep(yDataRange, 6);
+    const zStep = calculateNiceStep(zDataRange, 6);
+    
+    const gridDivisions = 20;
+    const xyGridSize = Math.max(
+        gridBounds.maxX - gridBounds.minX,
+        gridBounds.maxY - gridBounds.minY
+    );
+    const xyGrid = new THREE.GridHelper(xyGridSize, gridDivisions, 0x444444, 0x222222);
     xyGrid.rotation.x = Math.PI / 2;
+    xyGrid.position.set(
+        (gridBounds.minX + gridBounds.maxX) / 2,
+        (gridBounds.minY + gridBounds.maxY) / 2,
+        0
+    );
     group.add(xyGrid);
     
-    // Track label positions for collision culling
     const labelPositions: THREE.Vector3[] = [];
     
-    // Z-AXIS: Vertical pole with data-driven bounds
+    const addLabel = (text: string, position: THREE.Vector3, bounds: typeof gridBounds): THREE.Sprite | null => {
+        if (!isWithinGridBounds(position, bounds, 0.3)) {
+            position = clampToGridBounds(position, bounds, 0.3);
+        }
+        
+        if (labelPositions.some(pos => checkLabelCollision(pos, position, 0.8))) {
+            return null;
+        }
+        
+        const label = createBillboardLabel(text, 0.6);
+        label.position.copy(position);
+        label.userData = { alwaysFaceCamera: true, type: 'gridLabel' };
+        labelPositions.push(position.clone());
+        return label;
+    };
+    
     const zAxisGroup = new THREE.Group();
     
-    // Main Z-axis line covering data bounds
     const zAxisGeometry = new THREE.BufferGeometry();
     zAxisGeometry.setFromPoints([
-        new THREE.Vector3(0, 0, dataMinZ * sceneScale),
-        new THREE.Vector3(0, 0, dataMaxZ * sceneScale)
+        new THREE.Vector3(0, 0, gridBounds.minZ),
+        new THREE.Vector3(0, 0, gridBounds.maxZ)
     ]);
     const zAxisMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
     const zAxisLine = new THREE.Line(zAxisGeometry, zAxisMaterial);
     zAxisGroup.add(zAxisLine);
     
-    // Z-axis tick marks and labels using data-driven iteration
-    const startZ = Math.floor(dataMinZ / unifiedStep) * unifiedStep;
-    for (let currentZ = startZ; currentZ <= dataMaxZ; currentZ += unifiedStep) {
-        // Skip origin (handled separately)
-        if (Math.abs(currentZ) < unifiedStep * 0.001) continue;
+    const zStart = Math.ceil((gridBounds.minZ / scales.z) / zStep) * zStep;
+    const zEnd = Math.floor((gridBounds.maxZ / scales.z) / zStep) * zStep;
+    
+    for (let currentZ = zStart; currentZ <= zEnd; currentZ += zStep) {
+        if (Math.abs(currentZ) < zStep * 0.001) continue;
         
-        // Scene position (scaled)
-        const sceneZ = currentZ * sceneScale;
+        const sceneZ = currentZ * scales.z;
         
-        // Horizontal tick mark
+        if (sceneZ < gridBounds.minZ || sceneZ > gridBounds.maxZ) continue;
+        
         const tickGeometry = new THREE.BufferGeometry();
         tickGeometry.setFromPoints([
             new THREE.Vector3(-0.3, 0, sceneZ),
@@ -309,72 +339,87 @@ export const createDataDrivenGridRulers = (scaledPoints?: THREE.Vector3[], origi
         const tickLine = new THREE.Line(tickGeometry, tickMaterial);
         zAxisGroup.add(tickLine);
         
-        // Label position
-        const labelPos = new THREE.Vector3(0.8, 0, sceneZ);
-        
-        // Collision culling
-        if (labelPositions.some(pos => checkLabelCollision(pos, labelPos))) continue;
-        
-        // Create label with RAW data coordinate (not scaled)
-        const label = createBillboardLabel(String(Math.round(currentZ)), 0.6);
-        label.position.copy(labelPos);
-        label.userData = { alwaysFaceCamera: true, type: 'gridLabel' };
-        zAxisGroup.add(label);
-        
-        labelPositions.push(labelPos);
+        let labelPos = new THREE.Vector3(0.8, 0, sceneZ);
+        const label = addLabel(String(Math.round(currentZ)), labelPos, gridBounds);
+        if (label) zAxisGroup.add(label);
     }
     
     group.add(zAxisGroup);
     
-    // X-axis labels using data-driven iteration
-    const startX = Math.floor(dataMinX / unifiedStep) * unifiedStep;
-    for (let currentX = startX; currentX <= dataMaxX; currentX += unifiedStep) {
-        // Skip origin (handled separately)
-        if (Math.abs(currentX) < unifiedStep * 0.001) continue;
+    const xAxisGroup = new THREE.Group();
+    const xAxisGeometry = new THREE.BufferGeometry();
+    xAxisGeometry.setFromPoints([
+        new THREE.Vector3(gridBounds.minX, 0, 0),
+        new THREE.Vector3(gridBounds.maxX, 0, 0)
+    ]);
+    const xAxisMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+    const xAxisLine = new THREE.Line(xAxisGeometry, xAxisMaterial);
+    xAxisGroup.add(xAxisLine);
+    
+    const xStart = Math.ceil((gridBounds.minX / scales.x) / xStep) * xStep;
+    const xEnd = Math.floor((gridBounds.maxX / scales.x) / xStep) * xStep;
+    
+    for (let currentX = xStart; currentX <= xEnd; currentX += xStep) {
+        if (Math.abs(currentX) < xStep * 0.001) continue;
         
-        // Scene position (scaled)
-        const sceneX = currentX * sceneScale;
+        const sceneX = currentX * scales.x;
         
-        const labelPos = new THREE.Vector3(sceneX, 0, 0.3);
+        if (sceneX < gridBounds.minX || sceneX > gridBounds.maxX) continue;
         
-        // Collision culling
-        if (labelPositions.some(pos => checkLabelCollision(pos, labelPos))) continue;
+        const tickGeometry = new THREE.BufferGeometry();
+        tickGeometry.setFromPoints([
+            new THREE.Vector3(sceneX, 0, -0.3),
+            new THREE.Vector3(sceneX, 0, 0.3)
+        ]);
+        const tickMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
+        const tickLine = new THREE.Line(tickGeometry, tickMaterial);
+        xAxisGroup.add(tickLine);
         
-        // Create label with RAW data coordinate
-        const label = createBillboardLabel(String(Math.round(currentX)), 0.6);
-        label.position.copy(labelPos);
-        label.userData = { alwaysFaceCamera: true, type: 'gridLabel' };
-        group.add(label);
-        
-        labelPositions.push(labelPos);
+        let labelPos = new THREE.Vector3(sceneX, 0, 0.8);
+        const label = addLabel(String(Math.round(currentX)), labelPos, gridBounds);
+        if (label) xAxisGroup.add(label);
     }
     
-    // Y-axis labels using data-driven iteration
-    const startY = Math.floor(dataMinY / unifiedStep) * unifiedStep;
-    for (let currentY = startY; currentY <= dataMaxY; currentY += unifiedStep) {
-        // Skip origin (handled separately)
-        if (Math.abs(currentY) < unifiedStep * 0.001) continue;
+    group.add(xAxisGroup);
+    
+    const yAxisGroup = new THREE.Group();
+    const yAxisGeometry = new THREE.BufferGeometry();
+    yAxisGeometry.setFromPoints([
+        new THREE.Vector3(0, gridBounds.minY, 0),
+        new THREE.Vector3(0, gridBounds.maxY, 0)
+    ]);
+    const yAxisMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+    const yAxisLine = new THREE.Line(yAxisGeometry, yAxisMaterial);
+    yAxisGroup.add(yAxisLine);
+    
+    const yStart = Math.ceil((gridBounds.minY / scales.y) / yStep) * yStep;
+    const yEnd = Math.floor((gridBounds.maxY / scales.y) / yStep) * yStep;
+    
+    for (let currentY = yStart; currentY <= yEnd; currentY += yStep) {
+        if (Math.abs(currentY) < yStep * 0.001) continue;
         
-        // Scene position (scaled)
-        const sceneY = currentY * sceneScale;
+        const sceneY = currentY * scales.y;
         
-        const labelPos = new THREE.Vector3(0.3, sceneY, 0);
+        if (sceneY < gridBounds.minY || sceneY > gridBounds.maxY) continue;
         
-        // Collision culling
-        if (labelPositions.some(pos => checkLabelCollision(pos, labelPos))) continue;
+        const tickGeometry = new THREE.BufferGeometry();
+        tickGeometry.setFromPoints([
+            new THREE.Vector3(-0.3, sceneY, 0),
+            new THREE.Vector3(0.3, sceneY, 0)
+        ]);
+        const tickMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
+        const tickLine = new THREE.Line(tickGeometry, tickMaterial);
+        yAxisGroup.add(tickLine);
         
-        // Create label with RAW data coordinate
-        const label = createBillboardLabel(String(Math.round(currentY)), 0.6);
-        label.position.copy(labelPos);
-        label.userData = { alwaysFaceCamera: true, type: 'gridLabel' };
-        group.add(label);
-        
-        labelPositions.push(labelPos);
+        let labelPos = new THREE.Vector3(0.8, sceneY, 0);
+        const label = addLabel(String(Math.round(currentY)), labelPos, gridBounds);
+        if (label) yAxisGroup.add(label);
     }
     
-    // SINGLE ORIGIN LABEL - exactly one at (0,0,0)
+    group.add(yAxisGroup);
+    
     const originLabel = createBillboardLabel('0', 0.8);
-    originLabel.position.set(0, 0, 0.4);
+    originLabel.position.set(0.5, 0, 0.5);
     originLabel.userData = { alwaysFaceCamera: true, type: 'gridLabel' };
     group.add(originLabel);
     
@@ -384,8 +429,6 @@ export const createDataDrivenGridRulers = (scaledPoints?: THREE.Vector3[], origi
 export const createGrid = (): THREE.Group => {
     return createDataDrivenGridRulers();
 };
-
-// ---------- Spheres ----------
 
 interface CreateSphereParams {
     point: TrajectoryPoint;
@@ -414,8 +457,6 @@ export const createSphere = ({ point, index, totalPoints, scaledPosition }: Crea
     return sphere;
 };
 
-// ---------- Trajectory Line ----------
-
 export const createTrajectoryLine = (scaledPoints: THREE.Vector3[]): THREE.Line | null => {
     if (scaledPoints.length < 2) return null;
 
@@ -427,8 +468,6 @@ export const createTrajectoryLine = (scaledPoints: THREE.Vector3[]): THREE.Line 
 
     return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffffff }));
 };
-
-// ---------- Trajectory Tubes ----------
 
 export const createTrajectoryTubes = (points: TrajectoryPoint[], scaledPoints: THREE.Vector3[]): THREE.Mesh[] => {
     if (points.length < 2) return [];
@@ -446,7 +485,6 @@ export const createTrajectoryTubes = (points: TrajectoryPoint[], scaledPoints: T
 
         const curve = new THREE.LineCurve3(scaledStart, scaledEnd);
 
-        // Create smoother tube geometry with more segments
         const tubeGeometry = new THREE.TubeGeometry(curve, 64, 0.04, 8, false);
 
         const material = new THREE.MeshBasicMaterial({
@@ -492,8 +530,6 @@ export const createTrajectoryTubes = (points: TrajectoryPoint[], scaledPoints: T
     return tubes;
 };
 
-// ---------- Utility Functions ----------
-
 export const getMousePosition = (event: MouseEvent, rect: DOMRect) => ({
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: -((event.clientY - rect.top) / rect.height) * 2 + 1
@@ -512,3 +548,44 @@ export const updateSphereColor = (sphere: THREE.Mesh, activePointId: string | nu
 
 export const getPointId = (point: TrajectoryPoint): string =>
     `${point.x}_${point.y}_${point.z}_${point.time_s}`;
+
+export const calculateGridBounds = (
+    points: TrajectoryPoint[],
+    axisScales: { x: number; y: number; z: number },
+    padding: number = 0.15
+) => {
+    if (points.length === 0) {
+        return { minX: -10, maxX: 10, minY: -10, maxY: 10, minZ: -10, maxZ: 10 };
+    }
+    
+    const xValues = points.map(p => p.x);
+    const yValues = points.map(p => p.y);
+    const zValues = points.map(p => p.z);
+    
+    const rawMinX = Math.min(...xValues);
+    const rawMaxX = Math.max(...xValues);
+    const rawMinY = Math.min(...yValues);
+    const rawMaxY = Math.max(...yValues);
+    const rawMinZ = Math.min(...zValues);
+    const rawMaxZ = Math.max(...zValues);
+    
+    return {
+        minX: rawMinX * axisScales.x * (1 - padding),
+        maxX: rawMaxX * axisScales.x * (1 + padding),
+        minY: rawMinY * axisScales.y * (1 - padding),
+        maxY: rawMaxY * axisScales.y * (1 + padding),
+        minZ: rawMinZ * axisScales.z * (1 - padding),
+        maxZ: rawMaxZ * axisScales.z * (1 + padding)
+    };
+};
+
+export const clampTrajectoryToBounds = (
+    points: THREE.Vector3[],
+    bounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }
+): THREE.Vector3[] => {
+    return points.map(p => new THREE.Vector3(
+        Math.max(bounds.minX, Math.min(bounds.maxX, p.x)),
+        Math.max(bounds.minY, Math.min(bounds.maxY, p.y)),
+        Math.max(bounds.minZ, Math.min(bounds.maxZ, p.z))
+    ));
+};
