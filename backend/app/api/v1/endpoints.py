@@ -8,6 +8,7 @@ from app.core.processor import FlightProcessor
 from app.services.navigation.fusion import NavigationFusion
 from app.services.navigation.optimizer import optimize_trajectory
 
+from app.services.n8n_service import get_ai_analysis
 router = APIRouter()
 
 
@@ -74,6 +75,8 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             "llm_response": "Аналіз готовий. Використано фільтрацію UKF для Anti-REB."
         }
 
+        ai_report = get_ai_analysis(telemetry_data=analysis_block) # виклик n8n для генерації звіту ШІ
+
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -81,6 +84,7 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             "status": "success",
             "data": optimized_data,
             "analysis": analysis_block,
+            "ai_analysis": ai_report,
             "meta": {"filename": file.filename, "engine": "NavigationFusion + Splines"}
         }
 
