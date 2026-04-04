@@ -22,6 +22,10 @@ class NavigationFusion:
             np.array([first_gps['x_enu'], first_gps['y_enu'], first_gps['z_enu']]),
             np.array([first_gps.get('VelE', 0), first_gps.get('VelN', 0), 0])
         )
+        
+        # Ініціалізація змінних для розрахунку Vz перед циклом
+        self.prev_gps_alt = first_gps['z_enu']
+        self.prev_gps_time = first_gps['TimeUS'] / 1e6
 
         imu_filtered = imu_df[imu_df['TimeUS'] >= first_gps['TimeUS']].copy()
 
@@ -32,8 +36,7 @@ class NavigationFusion:
             self.engine.accel_bias_body = avg_acc - np.array([0, 0, 9.81])
             self.is_calibrated = True
 
-        # Розрахунок норми прискорення (важливості) для кожної точки IMU
-        # Віднімаємо гравітацію 9.81, щоб виділити динамічне прискорення
+        # Розрахунок норми прискорення (важливості)
         imu_filtered['accel_norm'] = np.sqrt(
             imu_filtered['AccX']**2 +
             imu_filtered['AccY']**2 +
@@ -53,6 +56,8 @@ class NavigationFusion:
             pos, speed = self.engine.predict(acc, gyr, row.get('dt', 0.02))
 
             is_gps_update = False
+            is_anomaly = False
+            
             if pd.notnull(row.get('x_enu')):
                 curr_pos = np.array([row['x_enu'], row['y_enu'], row['z_enu']])
                 curr_time = row['TimeUS'] / 1e6
@@ -64,13 +69,24 @@ class NavigationFusion:
                 else:
                     vz = -row.get('VelD', 0.0)
 
-                self.engine.correct(curr_pos, np.array([row.get('VelE', 0), row.get('VelN', 0), vz]), alpha=0.5)
-                pos = self.engine.position
-                self.prev_gps_alt = row['z_enu']
-                self.prev_gps_time = curr_time
-                is_gps_update = True
+                curr_vel = np.array([row.get('VelE', 0), row.get('VelN', 0), vz])
+                
+                # Отримання динамічних похибок
+                h_acc = row.get('h_acc', 2.0)
+                s_acc = row.get('s_acc', 0.5)
 
-            # Формуємо точку з міткою важливості
+                # Перевірка на аномалії (РЕБ)
+                if self.engine.is_gps_plausible(curr_pos, curr_vel, h_acc, s_acc):
+                    self.engine.correct(curr_pos, curr_vel, alpha=0.2)
+                    pos = self.engine.position
+                    self.prev_gps_alt = row['z_enu']
+                    self.prev_gps_time = curr_time
+                    is_gps_update = True
+                else:
+                    is_anomaly = True
+                    is_gps_update = False
+
+            # Формуємо точку
             final_trajectory.append({
                 "x": float(pos[0]),
                 "y": float(pos[1]),
@@ -78,7 +94,8 @@ class NavigationFusion:
                 "speed": float(speed),
                 "time_s": float(row['TimeUS'] / 1e6),
                 "is_gps_step": is_gps_update,
-                "importance": float(row['accel_norm']) # <--- ЦЕ КЛЮЧОВИЙ ПАРАМЕТР ДЛЯ ОПТИМІЗАТОРА
+                "is_anomaly": is_anomaly,
+                "importance": float(row['accel_norm'])
             })
 
         return final_trajectory

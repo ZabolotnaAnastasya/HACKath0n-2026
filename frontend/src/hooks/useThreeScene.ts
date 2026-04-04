@@ -5,14 +5,15 @@ import {
     createScene,
     createGrid,
     createSphere,
-    createTrajectoryLine,
     createTrajectoryTubes,
     getMousePosition,
     updateSphereColor,
     getPointId,
     scaleTrajectoryToGrid,
     setupCameraForTopView,
-    createDataDrivenGridRulers
+    createDataDrivenGridRulers,
+    calculateGridBounds,
+    clampTrajectoryToBounds
 } from "../helpers/threeHelpers.ts";
 import type { TrajectoryPoint } from "../types";
 import { useTrajectoryStore } from "../stores/useTrajectoryStore";
@@ -142,7 +143,6 @@ export const useThreeScene = (): UseThreeSceneReturn => {
             animationIdRef.current = requestAnimationFrame(animate);
             controls.update();
             
-            // Update camera-facing sprites (grid labels)
             scene.traverse((child) => {
                 if (child instanceof THREE.Sprite && child.userData.alwaysFaceCamera) {
                     child.quaternion.copy(camera.quaternion);
@@ -164,7 +164,6 @@ export const useThreeScene = (): UseThreeSceneReturn => {
         };
     }, []);
 
-    // Оновлення сфери та лінії при зміні trajectoryArray
     useEffect(() => {
         const scene = sceneRef.current;
         const controls = controlsRef.current;
@@ -173,21 +172,18 @@ export const useThreeScene = (): UseThreeSceneReturn => {
         console.log("[ThreeScene] Updating trajectoryArray, setting isLoading = true");
         setIsLoading(true);
 
-        // Видаляємо старі сфери
         spheresRef.current.forEach((sphere) => {
             scene.remove(sphere);
             sphere.geometry.dispose();
             (sphere.material as THREE.Material).dispose();
         });
 
-        // Видаляємо старі трубки
         tubesRef.current.forEach((tube) => {
             scene.remove(tube);
             tube.geometry.dispose();
             (tube.material as THREE.Material).dispose();
         });
 
-        // Видаляємо стару лінію (залишимо для сумісності)
         const oldLine = scene.children.find((child) => child instanceof THREE.Line);
         if (oldLine) {
             scene.remove(oldLine);
@@ -195,10 +191,10 @@ export const useThreeScene = (): UseThreeSceneReturn => {
             ((oldLine as THREE.Line).material as THREE.Material).dispose();
         }
 
-        // Scale trajectory to fit within grid (relative to origin)
-        const { scaledPoints } = scaleTrajectoryToGrid(trajectoryArray);
+        const { scaledPoints, axisScales } = scaleTrajectoryToGrid(trajectoryArray);
+        const gridBounds = calculateGridBounds(trajectoryArray, axisScales, 0.15);
+        const clampedPoints = clampTrajectoryToBounds(scaledPoints, gridBounds);
 
-        // Remove old grid and create new data-driven one with actual data
         if (gridRef.current) {
             scene.remove(gridRef.current);
             gridRef.current.traverse((child) => {
@@ -215,40 +211,36 @@ export const useThreeScene = (): UseThreeSceneReturn => {
             });
         }
 
-        // Create grid with labels based on actual trajectory data
-        const grid = createDataDrivenGridRulers(scaledPoints, trajectoryArray);
+        const grid = createDataDrivenGridRulers(clampedPoints, trajectoryArray, axisScales, gridBounds);
         scene.add(grid);
         gridRef.current = grid;
 
-        // Створюємо нові сфери
         const spheres: THREE.Mesh[] = trajectoryArray.map((point, index) =>
             createSphere({ 
                 point, 
                 index, 
                 totalPoints: trajectoryArray.length,
-                scaledPosition: scaledPoints[index]
+                scaledPosition: clampedPoints[index]
             })
         );
         spheres.forEach((sphere) => scene.add(sphere));
         spheresRef.current = spheres;
 
-        // Створюємо трубки замість лінії
-        const tubes = createTrajectoryTubes(trajectoryArray, scaledPoints);
+        const tubes = createTrajectoryTubes(trajectoryArray, clampedPoints);
         tubes.forEach((tube) => scene.add(tube));
         tubesRef.current = tubes;
 
-        // Встановлюємо початкову активну точку
         if (trajectoryArray.length > 0 && !hasSetInitialPointRef.current) {
             const firstPoint = trajectoryArray[0];
             setActivePoint(firstPoint);
-            if (controls) controls.target.copy(scaledPoints[0]);
+            if (controls) controls.target.copy(clampedPoints[0]);
             hasSetInitialPointRef.current = true;
         } else if (activePoint && controls) {
             const activeIndex = trajectoryArray.findIndex(p => 
                 p.x === activePoint.x && p.y === activePoint.y && p.z === activePoint.z && p.time_s === activePoint.time_s
             );
             if (activeIndex >= 0) {
-                controls.target.copy(scaledPoints[activeIndex]);
+                controls.target.copy(clampedPoints[activeIndex]);
             }
         }
 
@@ -261,33 +253,30 @@ export const useThreeScene = (): UseThreeSceneReturn => {
         hasSetInitialPointRef.current = false;
     }, [trajectoryArray]);
 
-    // Update camera target when active point changes
     useEffect(() => {
         const controls = controlsRef.current;
         if (!controls || !activePoint || trajectoryArray.length === 0) return;
 
         console.log("[ThreeScene] Updating camera target to active point:", activePoint);
         
-        // Find the scaled position of the active point
-        const { scaledPoints } = scaleTrajectoryToGrid(trajectoryArray);
+        const { scaledPoints, axisScales } = scaleTrajectoryToGrid(trajectoryArray);
+        const gridBounds = calculateGridBounds(trajectoryArray, axisScales, 0.15);
+        const clampedPoints = clampTrajectoryToBounds(scaledPoints, gridBounds);
         const activeIndex = trajectoryArray.findIndex(p => 
             p.x === activePoint.x && p.y === activePoint.y && p.z === activePoint.z && p.time_s === activePoint.time_s
         );
         
         if (activeIndex >= 0) {
-            // Smoothly transition camera target to active point
             const currentTarget = controls.target.clone();
-            const targetPosition = scaledPoints[activeIndex];
+            const targetPosition = clampedPoints[activeIndex];
             
-            // Simple smooth transition
-            const transitionDuration = 0.5; // seconds
+            const transitionDuration = 0.5;
             const startTime = Date.now();
             
             const smoothTransition = () => {
                 const elapsed = (Date.now() - startTime) / 1000;
                 const progress = Math.min(elapsed / transitionDuration, 1);
                 
-                // Ease-in-out function
                 const easedProgress = progress < 0.5 
                     ? 2 * progress * progress 
                     : 1 - Math.pow(-2 * progress + 2, 2) / 2;

@@ -17,7 +17,7 @@ export const InfoPanel = () => {
 
                 <InfoRow label="Lat" value={formatCoordinate(point.lat)} />
                 <InfoRow label="Lon" value={formatCoordinate(point.lon)} />
-                <InfoRow label="Abs Alt" value={formatNumber(point.abs_alt)} />
+                <InfoRow label="Abs Alt" value={formatNumber(point.alt_abs)} />
 
                 <div className="border-t border-gray-700 my-0.5" />
 

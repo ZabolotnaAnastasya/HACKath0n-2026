@@ -13,45 +13,65 @@ const AnalysisSection = () => {
     return (
         <div
             id="analysis-section"
-            style={{
-                width: '100%',
-                minHeight: '100vh',
-                backgroundColor: '#000000',
-                color: '#FFFFFF',
-                padding: '50px'
-            }}
+            className="w-full h-screen bg-black text-white p-6"
         >
-            <h2 style={{ fontSize: '30px', fontWeight: 'bold', marginBottom: '24px' }}>Analysis</h2>
-            <div style={{ lineHeight: '1.6' }}>
-                {analysis ? (
-                    <>
-                        <p style={{ marginBottom: '16px' }}><strong>Max Speed:</strong> {analysis.maxSpeed.toFixed(2)} m/s</p>
-                        <p style={{ marginBottom: '16px' }}><strong>Total Points:</strong> {analysis.totalPoints}</p>
-                        <p style={{ marginBottom: '16px' }}><strong>LLM Response:</strong> {analysis.llmResponse}</p>
-                    </>
-                ) : (
-                    <p>No analysis data available.</p>
-                )}
-            </div>
+            <h2 className="text-2xl font-bold mb-4">Analysis</h2>
+
+            {analysis ? (
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="grid gap-3 col-span-1">
+                        <div className="bg-black border border-white p-2 rounded-lg">
+                            <p className="text-gray-400 text-xs mb-1">Max Horizontal Speed</p>
+                            <p className="text-xl font-bold">{analysis.maxHorizontalSpeed.toFixed(2)} m/s</p>
+                        </div>
+                        <div className="bg-black border border-white p-2 rounded-lg">
+                            <p className="text-gray-400 text-xs mb-1">Max Vertical Speed</p>
+                            <p className="text-xl font-bold">{analysis.maxVerticalSpeed.toFixed(2)} m/s</p>
+                        </div>
+                        <div className="bg-black border border-white p-2 rounded-lg">
+                            <p className="text-gray-400 text-xs mb-1">Max Acceleration</p>
+                            <p className="text-xl font-bold">{analysis.maxAcceleration.toFixed(2)} m/s²</p>
+                        </div>
+                        <div className="bg-black border border-white p-2 rounded-lg">
+                            <p className="text-gray-400 text-xs mb-1">Max Climb</p>
+                            <p className="text-xl font-bold">{analysis.maxClimb.toFixed(2)} m</p>
+                        </div>
+                        <div className="bg-black border border-white p-2 rounded-lg">
+                            <p className="text-gray-400 text-xs mb-1">Total Distance</p>
+                            <p className="text-xl font-bold">{analysis.totalDistance.toFixed(2)} m</p>
+                        </div>
+                        <div className="bg-black border border-white p-2 rounded-lg">
+                            <p className="text-gray-400 text-xs mb-1">Total Duration</p>
+                            <p className="text-xl font-bold">{analysis.totalDuration.toFixed(2)} s</p>
+                        </div>
+                    </div>
+
+                    <div className="col-span-2 bg-black border border-white p-4 rounded-lg">
+                        <p className="text-gray-400 text-xs mb-1">LLM Analysis</p>
+                        <p className="text-sm leading-relaxed">{analysis.llmResponse}</p>
+                    </div>
+                </div>
+            ) : (
+                <p className="text-sm">No analysis data available.</p>
+            )}
         </div>
     );
 };
-
 const TopSection = () => {
     const handleAnalysisClick = () => {
         const analysisSection = document.getElementById('analysis-section');
         if (analysisSection) {
-            analysisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            analysisSection.scrollIntoView({behavior: 'smooth', block: 'start'});
         }
     };
-    
+
     return (
-        <div style={{ height: '100vh', minHeight: '100vh' }} className="w-full flex gap-4 p-4">
+        <div style={{height: '100vh', minHeight: '100vh'}} className="w-full flex gap-4 p-6">
             <SceneContainer>
-                <TrajectoryScene />
+                <TrajectoryScene/>
             </SceneContainer>
             <Sidebar>
-                <UploadNewFileButton />
+                <UploadNewFileButton/>
                 <div className="bg-black text-white flex flex-col h-full">
                     <div className="flex border-b border-gray-700">
                         <div className="flex-1 px-4 py-2 text-sm font-medium opacity-70 border-b-2 border-white">
@@ -65,8 +85,8 @@ const TopSection = () => {
                         </button>
                     </div>
                     <div className="flex-1 overflow-hidden">
-                        <InfoPanel />
-                        <MapView />
+                        <InfoPanel/>
+                        <MapView/>
                     </div>
                 </div>
             </Sidebar>
@@ -77,8 +97,8 @@ const TopSection = () => {
 export const DashboardPage = () => {
     return (
         <MainLayout>
-            <TopSection />
-            <AnalysisSection />
+            <TopSection/>
+            <AnalysisSection/>
         </MainLayout>
     );
 };
