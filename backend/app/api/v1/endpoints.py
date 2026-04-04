@@ -65,12 +65,13 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             max_accel = max([math.sqrt(p['AccX'] ** 2 + p['AccY'] ** 2 + (p['AccZ'] - 9.81) ** 2) for p in imu_raw])
 
         analysis_block = {
-            "max_horizontal_speed": round(max([p['speed'] for p in optimized_data]) if optimized_data else 0, 2),
-            "max_acceleration": round(max_accel, 2),
-            "max_climb": round(max([p['alt'] for p in gps_raw]) - gps_raw[0]['alt'] if gps_raw else 0, 2),
-            "total_distance": round(total_dist, 2),
-            "total_duration": round(imu_raw[-1]['time_s'] - imu_raw[0]['time_s'] if imu_raw else 0, 2),
-            "llm_response": "Аналіз готовий. Використано фільтрацію UKF (злиття GPS+IMU) та оптимізацію кубічними сплайнами."
+            "max_horizontal_speed_ms": round(max([p['speed'] for p in optimized_data]) if optimized_data else 0, 2),
+            "max_vertical_speed_ms": round(max([abs(p['speed']) for p in smart_trajectory]), 2),
+            "max_acceleration_m_s2": round(max_accel, 2),
+            "max_climb_ms": round(max([p['alt'] for p in gps_raw]) - gps_raw[0]['alt'] if gps_raw else 0, 2),
+            "total_distance_m": round(total_dist, 2),
+            "total_duration_sec": round(imu_raw[-1]['time_s'] - imu_raw[0]['time_s'] if imu_raw else 0, 2),
+            # "llm_response": "Аналіз готовий. Використано фільтрацію UKF (злиття GPS+IMU) та оптимізацію кубічними сплайнами."
         }
 
         ai_report = get_ai_analysis(telemetry_data=analysis_block) # виклик n8n для генерації звіту ШІ
@@ -84,8 +85,6 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             "data": optimized_data,
             "analysis": analysis_block,
             "ai_analysis": ai_report,
-            "data": optimized_data,  # Ваня отримає плавні, ідеальні дані
-            "analysis": analysis_block,  # ШІ отримає чіткі метрики
             "meta": {"filename": file.filename, "engine": "NavigationFusion + Splines"}
         }
 
