@@ -68,6 +68,9 @@ class NavigationFusion:
                 "z": float(pos[2]),
                 "speed": float(speed),
                 "time_s": float(row['TimeUS'] / 1e6),
+                "lat": row.get('lat', 0.0),        # ДЛЯ ВАНІ
+                "lon": row.get('lng', 0.0),        # ДЛЯ ВАНІ
+                "alt_abs": row.get('alt', 0.0),    # ДЛЯ ВАНІ
                 "is_gps_step": is_gps_update,
                 "importance": float(row['accel_norm'])
             })

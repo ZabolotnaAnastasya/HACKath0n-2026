@@ -1,51 +1,78 @@
+import pandas as pd
 import numpy as np
-from scipy.interpolate import CubicSpline
+from .engine import NavigationEngine
 
-def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
-    n = len(trajectory)
-    if n <= target_points or target_points < 3:
-        return trajectory
+class NavigationFusion:
+    def __init__(self):
+        self.engine = NavigationEngine()
+        self.is_calibrated = False
+        self.prev_gps_alt = None
+        self.prev_gps_time = None
 
-    unique_traj = []
-    seen_times = set()
-    for p in sorted(trajectory, key=lambda x: x['time_s']):
-        if p['time_s'] not in seen_times:
-            unique_traj.append(p)
-            seen_times.add(p['time_s'])
+    def process_flight_data(self, imu_df: pd.DataFrame, gps_df: pd.DataFrame):
+        if gps_df.empty or imu_df.empty:
+            return []
 
-    n_unique = len(unique_traj)
-    essential_indices = {0, n_unique - 1}
+        imu_df = imu_df.sort_values('TimeUS')
+        gps_df = gps_df.sort_values('TimeUS')
 
-    scores = []
-    for i in range(1, n_unique - 1):
-        scores.append((i, unique_traj[i].get('importance', 0)))
+        first_gps = gps_df.iloc[0]
+        self.engine.correct(
+            np.array([first_gps['x_enu'], first_gps['y_enu'], first_gps['z_enu']]),
+            np.array([first_gps.get('VelE', 0), first_gps.get('VelN', 0), 0])
+        )
 
-    scores.sort(key=lambda x: x[1], reverse=True)
+        imu_filtered = imu_df[imu_df['TimeUS'] >= first_gps['TimeUS']].copy()
 
-    num_to_add = min(target_points - 2, len(scores))
-    for i in range(num_to_add):
-        essential_indices.add(scores[i][0])
+        if not self.is_calibrated and len(imu_filtered) > 50:
+            sample = imu_filtered.head(50)
+            avg_acc = np.array([sample['AccX'].mean(), sample['AccY'].mean(), sample['AccZ'].mean()])
+            self.engine.accel_bias_body = avg_acc - np.array([0, 0, 9.81])
+            self.is_calibrated = True
 
-    skeleton_indices = sorted(list(essential_indices))
-    skeleton_points = [unique_traj[i] for i in skeleton_indices]
+        imu_filtered['accel_norm'] = np.sqrt(
+            imu_filtered['AccX']**2 +
+            imu_filtered['AccY']**2 +
+            (imu_filtered['AccZ'] - 9.81)**2
+        )
 
-    t_skel = np.array([p['time_s'] for p in skeleton_points])
-    coords_skel = np.array([[p['x'], p['y'], p['z']] for p in skeleton_points])
+        combined = pd.merge_asof(
+            imu_filtered, gps_df, on='TimeUS', direction='backward', tolerance=500000
+        )
 
-    cs = CubicSpline(t_skel, coords_skel, bc_type='natural')
+        final_trajectory = []
+        for _, row in combined.iterrows():
+            acc = np.array([row['AccX'], row['AccY'], row['AccZ']])
+            gyr = np.array([row['GyrX'], row['GyrY'], row['GyrZ']])
+            pos, speed = self.engine.predict(acc, gyr, row.get('dt', 0.02))
 
-    t_final = np.linspace(t_skel[0], t_skel[-1], target_points)
-    coords_final = cs(t_final)
-    velocities = np.linalg.norm(cs(t_final, 1), axis=1)
+            is_gps_update = False
+            if pd.notnull(row.get('x_enu')):
+                curr_pos = np.array([row['x_enu'], row['y_enu'], row['z_enu']])
+                curr_time = row['TimeUS'] / 1e6
+                vz = 0.0
+                if self.prev_gps_alt is not None and curr_time > self.prev_gps_time:
+                    vz = (row['z_enu'] - self.prev_gps_alt) / (curr_time - self.prev_gps_time)
+                else:
+                    vz = -row.get('VelD', 0.0)
 
-    optimized_output = []
-    for i in range(len(t_final)):
-        optimized_output.append({
-            "time_s": round(float(t_final[i]), 3),
-            "x": round(float(coords_final[i][0]), 2),
-            "y": round(float(coords_final[i][1]), 2),
-            "z": round(float(coords_final[i][2]), 2),
-            "speed": round(float(velocities[i]), 2)
-        })
+                self.engine.correct(curr_pos, np.array([row.get('VelE', 0), row.get('VelN', 0), vz]), alpha=0.5)
+                pos = self.engine.position
+                self.prev_gps_alt = row['z_enu']
+                self.prev_gps_time = curr_time
+                is_gps_update = True
 
-    return optimized_output
+            final_trajectory.append({
+                "x": float(pos[0]),
+                "y": float(pos[1]),
+                "z": float(pos[2]),
+                "speed": float(speed),
+                "time_s": float(row['TimeUS'] / 1e6),
+                "lat": row.get('lat', 0.0),        # ДЛЯ ВАНІ
+                "lon": row.get('lng', 0.0),        # ДЛЯ ВАНІ
+                "alt_abs": row.get('alt', 0.0),    # ДЛЯ ВАНІ
+                "is_gps_step": is_gps_update,
+                "importance": float(row['accel_norm'])
+            })
+
+        return final_trajectory
