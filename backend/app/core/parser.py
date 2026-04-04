@@ -1,9 +1,18 @@
 from pymavlink import mavutil
 
+
 class LogParser:
-    def __init__(self, file_path):
-        # Шлях до бінарного файлу логу
+    def __init__(self, file_path: str):  # Додаємо аргумент file_path
         self.file_path = file_path
+        # Тут може бути ініціалізація структури для Ardupilot
+
+    def parse_telemetry(self):
+        # Логіка парсингу GPS та IMU з self.file_path
+        # Повертає (gps_data, imu_data, att_data)
+        gps_raw = []  # твій розпарсений список
+        imu_raw = []  # твій розпарсений список
+        att_raw = []  # твій розпарсений список
+        return gps_raw, imu_raw, att_raw
 
     def parse_telemetry(self):
         # Підключаємось до файлу
