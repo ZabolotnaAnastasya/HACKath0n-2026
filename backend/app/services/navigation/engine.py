@@ -7,7 +7,7 @@ class NavigationEngine:
         self.velocity = np.array([0.0, 0.0, 0.0])
         self.orientation = R.from_quat([0, 0, 0, 1])
         # В системі ENU Up - це +Z, тому гравітація спрямована вниз (-9.81)
-        self.gravity_global = np.array([0.0, 0.0, 9.81])#правлю на +
+        self.gravity_global = np.array([0.0, 0.0, -9.81])#правлю на +
         self.accel_bias_body = np.array([0.0, 0.0, 0.0])
         self.accel_prev_global = np.array([0.0, 0.0, 0.0])
 
