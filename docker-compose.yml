@@ -9,12 +9,12 @@ services:
     volumes:
       - ./backend:/app
 
-#  frontend:
-#    build: ./frontend
-#    ports:
-#      - "3000:3000"
-#    depends_on:
-#      - backend
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
   llm_service:
     build: ./llm
