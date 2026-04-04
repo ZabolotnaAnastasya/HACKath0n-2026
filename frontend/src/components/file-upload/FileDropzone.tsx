@@ -1,5 +1,6 @@
 import { useDropzone } from "react-dropzone";
 import { useFileUpload } from "../../hooks/useFileUpload";
+import { useMaxPointsStore } from "../../stores/useMaxPointsStore";
 
 const MAX_SIZE = 1024 * 1024 * 100;
 const MAX_FILES = 1;
@@ -11,6 +12,7 @@ interface FileDropzoneProps {
 
 export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
     const { tempFile, isUploading, uploadError, onDrop, startUpload } = useFileUpload();
+    const { maxPoints, setMaxPoints } = useMaxPointsStore();
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -25,6 +27,11 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
         onFileSelect();
     };
 
+    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.stopPropagation();
+        setMaxPoints(Number(e.target.value));
+    };
+
     return (
         <div
             {...getRootProps()}
@@ -32,7 +39,9 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
                 isDragActive ? "opacity-70" : "opacity-100"
             }`}
         >
-            <div className="border-dashed border-2 border-gray-300 p-4 rounded-2xl w-8/12 min-h-[50%] flex flex-col justify-center items-center gap-4">
+            <div
+                className="border-dashed border-2 border-gray-300 p-4 rounded-2xl w-8/12 min-h-[50%] flex flex-col justify-center items-center gap-4"
+            >
                 <input {...getInputProps()} />
 
                 {isDragActive ? (
@@ -42,13 +51,29 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
                 )}
 
                 {tempFile && (
-                    <button
-                        onClick={handleUploadClick}
-                        disabled={isUploading}
-                        className="bg-white text-black px-4 py-2 rounded hover:cursor-pointer hover:scale-105 hover:opacity-80 transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isUploading ? "Loading..." : `Load ${tempFile.name}`}
-                    </button>
+                    <>
+                        <button
+                            onClick={handleUploadClick}
+                            disabled={isUploading}
+                            className="bg-white text-black px-4 py-2 rounded hover:scale-105 hover:opacity-80 hover:cursor-pointer transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isUploading ? "Loading..." : `Load ${tempFile.name}`}
+                        </button>
+
+                        <div className="w-1/4 flex flex-col items-center gap-2">
+                            <span>Max points: {maxPoints}</span>
+                            <input
+                                type="range"
+                                min={50}
+                                max={3000}
+                                step={50}
+                                value={maxPoints}
+                                onChange={handleSliderChange}
+                                onClick={e => e.stopPropagation()}
+                                className="w-full accent-white cursor-pointer hover:scale-105 transition-all duration-100"
+                            />
+                        </div>
+                    </>
                 )}
 
                 {uploadError && (

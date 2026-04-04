@@ -17,6 +17,7 @@ interface UploadState {
 interface UploadActions {
   uploadFile: (
     file: File,
+    maxPoints: number,
     onSuccess: (trajectoryData: TrajectoryPoint[]) => void
   ) => Promise<void>;
   clearUpload: () => void;
@@ -28,10 +29,10 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
   error: null,
   analysis: null,
 
-  uploadFile: async (file, onSuccess) => {
+  uploadFile: async (file, maxPoints, onSuccess) => {
     set({ isUploading: true, error: null, analysis: null });
     try {
-      const response: TrajectoryResponse = await fetchTrajectory(file, 500);
+      const response: TrajectoryResponse = await fetchTrajectory(file, maxPoints);
 
       if (response.status === "error" || !response.data) {
         throw new Error(response.message || "Failed to process file");

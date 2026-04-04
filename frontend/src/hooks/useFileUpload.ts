@@ -3,6 +3,7 @@ import type { FileRejection } from "react-dropzone";
 import { useFileLoadStore } from "../stores/useFileLoadStore";
 import { useUploadStore } from "../stores/useUploadStore";
 import { useTrajectoryStore } from "../stores/useTrajectoryStore";
+import { useMaxPointsStore } from "../stores/useMaxPointsStore";
 
 interface UseFileUploadReturn {
     tempFile: File | null;
@@ -17,6 +18,7 @@ interface UseFileUploadReturn {
 export const useFileUpload = (): UseFileUploadReturn => {
     const { setFile } = useFileLoadStore();
     const { uploadFile, isUploading, error: uploadError, clearUpload } = useUploadStore();
+    const { maxPoints } = useMaxPointsStore();
     const setIsLoading = useTrajectoryStore((state) => state.setIsLoading);
     const setActivePoint = useTrajectoryStore((state) => state.setActivePoint);
     const [tempFile, setTempFile] = useState<File | null>(null);
@@ -44,12 +46,12 @@ export const useFileUpload = (): UseFileUploadReturn => {
         setIsUploadStarted(true);
         setIsLoading(true);
 
-        uploadFile(tempFile, (trajectoryData) => {
+        uploadFile(tempFile, maxPoints, (trajectoryData) => {
             useTrajectoryStore.setState({ trajectoryArray: trajectoryData });
             setActivePoint(trajectoryData[0] || null);
             setIsLoading(false);
         });
-    }, [tempFile, setFile, uploadFile, setIsLoading, setActivePoint]);
+    }, [tempFile, setFile, uploadFile, maxPoints, setIsLoading, setActivePoint]);
 
     const clearTempFile = useCallback(() => {
         setTempFile(null);
