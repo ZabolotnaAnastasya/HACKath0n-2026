@@ -8,6 +8,7 @@ from app.core.processor import FlightProcessor
 from app.services.navigation.fusion import NavigationFusion
 from app.services.navigation.optimizer import optimize_trajectory
 
+from app.services.n8n_service import get_ai_analysis
 router = APIRouter()
 
 
@@ -72,12 +73,17 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             "llm_response": "Аналіз готовий. Використано фільтрацію UKF (злиття GPS+IMU) та оптимізацію кубічними сплайнами."
         }
 
+        ai_report = get_ai_analysis(telemetry_data=analysis_block) # виклик n8n для генерації звіту ШІ
+
         # Видаляємо тимчасовий файл
         if os.path.exists(file_path):
             os.remove(file_path)
 
         return {
             "status": "success",
+            "data": optimized_data,
+            "analysis": analysis_block,
+            "ai_analysis": ai_report,
             "data": optimized_data,  # Ваня отримає плавні, ідеальні дані
             "analysis": analysis_block,  # ШІ отримає чіткі метрики
             "meta": {"filename": file.filename, "engine": "NavigationFusion + Splines"}
