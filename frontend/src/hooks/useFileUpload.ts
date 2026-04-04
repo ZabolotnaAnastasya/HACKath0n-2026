@@ -11,7 +11,7 @@ interface UseFileUploadReturn {
     isUploading: boolean;
     uploadError: string | null;
     onDrop: (acceptedFiles: File[], rejectedFiles: FileRejection[]) => void;
-    startUpload: () => void;
+    startUpload: (onSuccess?: () => void) => void;
     clearTempFile: () => void;
 }
 
@@ -40,7 +40,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
         [clearUpload]
     );
 
-    const startUpload = useCallback(() => {
+    const startUpload = useCallback((onSuccess?: () => void) => {
         if (!tempFile) return;
         setFile(tempFile);
         setIsUploadStarted(true);
@@ -50,6 +50,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
             useTrajectoryStore.setState({ trajectoryArray: trajectoryData });
             setActivePoint(trajectoryData[0] || null);
             setIsLoading(false);
+            onSuccess?.();
         });
     }, [tempFile, setFile, uploadFile, maxPoints, setIsLoading, setActivePoint]);
 

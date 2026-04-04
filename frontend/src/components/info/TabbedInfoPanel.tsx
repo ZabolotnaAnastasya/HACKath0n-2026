@@ -2,7 +2,6 @@ import { InfoPanel } from "./InfoPanel";
 import { MapView } from "../map/MapView";
 
 export const TabbedInfoPanel = () => {
-    const loremText = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 
     const handleAnalysisScroll = () => {
         const analysisSection = document.getElementById('analysis-section');
@@ -35,16 +34,12 @@ export const TabbedInfoPanel = () => {
             </div>
 
             <div 
-                id="analysis-section" 
+                id="analysis-section"
                 className="w-full min-h-screen bg-black text-white p-8 flex flex-col"
             >
                 <h2 className="text-3xl font-bold mb-6">Analysis</h2>
                 <div className="space-y-4 text-base leading-relaxed">
-                    <p>{loremText}</p>
-                    <p>{loremText}</p>
-                    <p>{loremText}</p>
-                    <p>{loremText}</p>
-                    <p>{loremText}</p>
+
                 </div>
             </div>
         </div>

@@ -12,11 +12,15 @@ export interface TrajectoryResponse {
     time_s: number;
     lat: number;
     lon: number;
-    abs_alt: number;
+    alt_abs: number;
   }>;
   analysis?: {
-    max_speed: number;
-    total_points: number;
+    max_horizontal_speed: number;
+    max_vertical_speed: number;
+    max_acceleration: number;
+    max_climb: number;
+    total_distance: number;
+    total_duration: number;
     llm_response: string;
   };
   meta?: {
