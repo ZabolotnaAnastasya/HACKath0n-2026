@@ -6,6 +6,7 @@ export interface TrajectoryPoint {
     time_s: number;
     lat: number;
     lon: number;
+    abs_alt: number;
 }
 
 export interface CameraPosition {

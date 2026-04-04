@@ -11,15 +11,13 @@ export const InfoPanel = () => {
 
     return (
         <div className="flex flex-col gap-1">
-            {/* Navigation Section */}
             <TrajectoryNavigation />
-            
-            {/* Point Info Section */}
             <div className="bg-black-900 rounded-[2px] p-2 text-sm flex flex-col gap-0.5">
                 <div className="font-bold mb-1 text-xs">Point Info</div>
 
                 <InfoRow label="Lat" value={formatCoordinate(point.lat)} />
                 <InfoRow label="Lon" value={formatCoordinate(point.lon)} />
+                <InfoRow label="Abs Alt" value={formatNumber(point.abs_alt)} />
 
                 <div className="border-t border-gray-700 my-0.5" />
 

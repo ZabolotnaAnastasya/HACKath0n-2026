@@ -13,7 +13,6 @@ export const TabbedInfoPanel = () => {
 
     return (
         <div className="bg-black text-white flex flex-col h-full">
-            {/* Tab Buttons */}
             <div className="flex border-b border-gray-700">
                 <button
                     className="flex-1 px-4 py-2 text-sm font-medium transition-all duration-200 cursor-pointer opacity-70 border-b-2 border-white hover:opacity-80"
@@ -28,7 +27,6 @@ export const TabbedInfoPanel = () => {
                 </button>
             </div>
 
-            {/* Main Content - Always visible */}
             <div className="flex-1">
                 <div className="animate-fadeIn">
                     <InfoPanel />
@@ -36,7 +34,6 @@ export const TabbedInfoPanel = () => {
                 </div>
             </div>
 
-            {/* Analysis Section - Below main content */}
             <div 
                 id="analysis-section" 
                 className="w-full min-h-screen bg-black text-white p-8 flex flex-col"

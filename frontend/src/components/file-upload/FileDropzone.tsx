@@ -10,7 +10,7 @@ interface FileDropzoneProps {
 }
 
 export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
-    const { tempFile, isUploadStarted, onDrop, startUpload } = useFileUpload();
+    const { tempFile, isUploading, uploadError, onDrop, startUpload } = useFileUpload();
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -41,13 +41,18 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
                     <p>Drag & drop target .bin file here, or click to select a file</p>
                 )}
 
-                {tempFile && !isUploadStarted && (
+                {tempFile && (
                     <button
                         onClick={handleUploadClick}
-                        className="bg-white text-black px-4 py-2 rounded hover:cursor-pointer hover:scale-105 hover:opacity-80 transition-all duration-100"
+                        disabled={isUploading}
+                        className="bg-white text-black px-4 py-2 rounded hover:cursor-pointer hover:scale-105 hover:opacity-80 transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Load {tempFile.name}
+                        {isUploading ? "Loading..." : `Load ${tempFile.name}`}
                     </button>
+                )}
+
+                {uploadError && (
+                    <p className="text-red-500">Error: {uploadError}</p>
                 )}
             </div>
         </div>
