@@ -12,14 +12,24 @@ class LogParser:
         last_imu_time = None
         found_pos = False
 
+        # Змінні для збереження останніх відомих похибок
+        last_hacc = 2.0  # Дефолт 2 метри
+        last_sacc = 0.5  # Дефолт 0.5 м/с
+
         while True:
-            msg = mlog.recv_match(type=['POS', 'GPS', 'IMU', 'ATT'], blocking=False)
+            # Додаємо GPA в список типів, які ми очікуємо від mlink
+            msg = mlog.recv_match(type=['POS', 'GPS', 'GPA', 'IMU', 'ATT'], blocking=False)
             if msg is None:
                 break
 
             m_type = msg.get_type()
 
-            if m_type == 'POS':
+            # Обробка похибок GPS Accuracy
+            if m_type == 'GPA':
+                last_hacc = getattr(msg, 'HAcc', 2.0)
+                last_sacc = getattr(msg, 'SAcc', 0.5)
+
+            elif m_type == 'POS':
                 if not found_pos:
                     gps_data.clear()
                     found_pos = True
@@ -30,7 +40,9 @@ class LogParser:
                     "alt": msg.RelAlt,
                     "speed": getattr(msg, 'Spd', 0.0),
                     "course": getattr(msg, 'GCrs', 0.0),
-                    "vz": getattr(msg, 'VZ', 0.0)
+                    "vz": getattr(msg, 'VZ', 0.0),
+                    "h_acc": last_hacc, # Додаємо динамічну похибку
+                    "s_acc": last_sacc  # Додаємо динамічну похибку
                 })
 
             elif m_type == 'GPS' and not found_pos:
@@ -42,7 +54,9 @@ class LogParser:
                         "alt": getattr(msg, 'Alt', 0),
                         "speed": getattr(msg, 'Spd', 0.0),
                         "course": getattr(msg, 'GCrs', 0.0),
-                        "vz": getattr(msg, 'VZ', 0.0)
+                        "vz": getattr(msg, 'VZ', 0.0),
+                        "h_acc": last_hacc, # Додаємо динамічну похибку
+                        "s_acc": last_sacc  # Додаємо динамічну похибку
                     })
 
             elif m_type == 'IMU':

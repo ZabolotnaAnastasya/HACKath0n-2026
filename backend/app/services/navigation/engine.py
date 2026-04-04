@@ -7,7 +7,7 @@ class NavigationEngine:
         self.velocity = np.array([0.0, 0.0, 0.0])
         self.orientation = R.from_quat([0, 0, 0, 1])
         # В системі ENU Up - це +Z, тому гравітація спрямована вниз (-9.81)
-        self.gravity_global = np.array([0.0, 0.0, -9.81])
+        self.gravity_global = np.array([0.0, 0.0, 9.81])#правлю на +
         self.accel_bias_body = np.array([0.0, 0.0, 0.0])
         self.accel_prev_global = np.array([0.0, 0.0, 0.0])
 
@@ -35,8 +35,33 @@ class NavigationEngine:
         self.accel_prev_global = acc_linear
 
         return self.position, np.linalg.norm(self.velocity)
+    
+
+    def is_gps_plausible(self, new_gps_pos, new_gps_vel, h_acc, s_acc):
+        """
+        Порівнює прогноз інерціальної моделі з даними GPS, 
+        використовуючи похибки з бінарника як динамічні пороги.
+        """
+        # Рахуємо реальну відстань між прогнозом і GPS у метрах
+        pos_diff = np.linalg.norm(new_gps_pos - self.position)
+        # Рахуємо різницю швидкостей у м/с
+        vel_diff = np.linalg.norm(new_gps_vel - self.velocity)
+        
+        # Ми даємо запас (коефіцієнт 2.0 або 3.0), бо GPS може шуміти,
+        # а інерція — трохи дрейфувати.
+        # Якщо розбіжність більша за (похибка з логу * запас) — це аномалія.
+        
+        is_pos_ok = pos_diff < (h_acc * 2.5)
+        is_vel_ok = vel_diff < (s_acc * 2.0)
+        
+        return is_pos_ok and is_vel_ok
+
+
+
+
 
     def correct(self, gps_pos, gps_vel=None, alpha=1.0):
         self.position = (1.0 - alpha) * self.position + alpha * gps_pos
         if gps_vel is not None:
             self.velocity = (1.0 - alpha) * self.velocity + alpha * gps_vel
+    
