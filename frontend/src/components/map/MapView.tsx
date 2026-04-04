@@ -1,10 +1,16 @@
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import { MapController } from "./MapController";
 import { useMapPosition } from "../../hooks/useMapPosition";
+import { useTrajectoryStore } from "../../stores/useTrajectoryStore";
 import "leaflet/dist/leaflet.css";
 
 export const MapView = () => {
     const position = useMapPosition();
+    const { trajectoryArray } = useTrajectoryStore();
+
+    const trajectoryPositions = trajectoryArray
+        .filter((point) => point.lat !== undefined && point.lon !== undefined)
+        .map((point) => [point.lat, point.lon] as [number, number]);
 
     return (
         <div className="w-full h-[250px] rounded-[2px] overflow-hidden">
@@ -19,6 +25,9 @@ export const MapView = () => {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
                 <MapController />
+                {trajectoryPositions.length > 1 && (
+                    <Polyline positions={trajectoryPositions} color="#3b82f6" weight={3} />
+                )}
                 <Marker position={position} />
             </MapContainer>
         </div>
