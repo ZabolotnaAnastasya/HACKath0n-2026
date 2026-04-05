@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   frontend:
@@ -21,6 +19,3 @@ services:
     environment:
       - N8N_URL=http://n8n:5678/webhook/analyze-telemetry
       - GEMINI_API_KEY=AIzaSyDq5WUkWgowk4V43_DWATj1Fyvqs7VCt_U
-
-volumes:
-  n8n_data:
