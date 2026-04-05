@@ -81,8 +81,6 @@ def get_ai_analysis(telemetry_data: dict) -> str:
             return "Помилка: Перевищено ліміт запитів (429). Спробуйте через 60 секунд."
         
         if response.status_code != 200:
-            # Логування детальної помилки для розробника
-            print(f"DEBUG ERROR: {response.status_code} - {response.text}")
             response.raise_for_status()
 
         result = response.json()
@@ -97,6 +95,4 @@ def get_ai_analysis(telemetry_data: dict) -> str:
         return "Помилка: API повернуло порожню відповідь."
 
     except requests.exceptions.RequestException as e:
-        # Логування помилок мережі
-        print(f"Критична помилка зв'язку з AI: {e}")
         return "Помилка підключення до сервера аналітики ШІ."

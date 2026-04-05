@@ -17,31 +17,23 @@ router = APIRouter()
 async def process_log(file: UploadFile = File(...), max_points: int = Query(500)):
     file_path = None
     try:
-        print(f"🚀 Отримано файл: {file.filename}. Починаємо обробку...")
         upload_dir = "data/uploads"
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, file.filename)
 
-        # Збереження файлу
         with open(file_path, "wb") as f:
-            f.write(await file.read())
+            content = await file.read()
+            f.write(content)
 
-        # 1. ПАРСИНГ
-        print("⏳ 1/5: Парсинг телеметрії...")
         parser = LogParser(file_path)
         gps_raw, imu_raw, _ = parser.parse_telemetry()
 
         if not gps_raw or not imu_raw:
             raise HTTPException(status_code=400, detail="Incomplete telemetry data")
 
-        # 2. ПІДГОТОВКА ДАНИХ
-        print(f"⏳ 2/5: Підготовка даних (GPS: {len(gps_raw)}, IMU: {len(imu_raw)})...")
-        # FlightProcessor тепер використовує TimeUS всередині
         gps_enu_list = FlightProcessor.convert_to_local_system(gps_raw)
 
-        flight_gps_raw = gps_raw[-len(gps_enu_list):] if gps_enu_list else gps_raw
-
-        df_gps = pd.DataFrame(flight_gps_raw)
+        df_gps = pd.DataFrame(gps_raw[-len(gps_enu_list):])
         df_enu = pd.DataFrame(gps_enu_list)
 
         if not df_gps.empty and not df_enu.empty:
@@ -51,43 +43,33 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
 
         df_imu = pd.DataFrame(imu_raw)
 
-        # 3. Ф'ЮЖН ТА ОПТИМІЗАЦІЯ
-        print("⏳ 3/5: Запуск NavigationFusion...")
         fusion = NavigationFusion()
         smart_trajectory = fusion.process_flight_data(df_imu, df_gps)
-
-        print("⏳ Згладжування сплайнами...")
         optimized_data = optimize_trajectory(smart_trajectory, target_points=max_points)
 
-        # 4. АНАЛІТИКА
-        print("⏳ 4/5: Розрахунок аналітики...")
-
-        # Дистанція (Haversine)
+        # Дистанція (Формула Гаверсайна)
         total_dist = 0
-        R = 6371000
+        R = 6371000  # Радіус Землі в метрах
         for i in range(1, len(gps_raw)):
             p1, p2 = gps_raw[i - 1], gps_raw[i]
             lat1, lon1 = math.radians(p1.get('lat', 0)), math.radians(p1.get('lng', 0))
             lat2, lon2 = math.radians(p2.get('lat', 0)), math.radians(p2.get('lng', 0))
-            a = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
+            dlat, dlon = lat2 - lat1, lon2 - lon1
+            # Формула Гаверсайна для великої колової дистанції
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
             total_dist += R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-        # Максимальне прискорення
+        # Максимальне прискорення (з урахуванням гравітації)
         max_accel = 0
         if imu_raw:
-            accels = []
-            for p in imu_raw:
-                # Використовуємо .get() для запобігання KeyError
-                ax, ay, az = p.get('AccX', 0), p.get('AccY', 0), p.get('AccZ', 9.81)
-                accels.append(math.sqrt(ax ** 2 + ay ** 2 + (az - 9.81) ** 2))
+            accels = [math.sqrt(p.get('AccX', 0) ** 2 + p.get('AccY', 0) ** 2 + (p.get('AccZ', 9.81) - 9.81) ** 2) for p
+                      in imu_raw]
             max_accel = max(accels) if accels else 0
 
-        # ТРИВАЛІСТЬ (ВИПРАВЛЕНО: TimeUS замість time_s)
+        # Тривалість польоту в секундах
         duration = 0
         if imu_raw:
-            t_start = imu_raw[0].get('TimeUS', 0)
-            t_end = imu_raw[-1].get('TimeUS', 0)
-            duration = (t_end - t_start) / 1_000_000.0
+            duration = (imu_raw[-1].get('TimeUS', 0) - imu_raw[0].get('TimeUS', 0)) / 1_000_000.0
 
         analysis_block = {
             "max_horizontal_speed_ms": round(max([p.get('speed', 0) for p in optimized_data]) if optimized_data else 0,
@@ -101,18 +83,15 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             "total_duration_sec": round(duration, 2),
         }
 
-        # 5. AI АГЕНТ
-        print("⏳ 5/5: Виклик ai_report...")
         ai_report = "AI report unavailable"
         try:
             ai_report = get_ai_analysis(telemetry_data=analysis_block)
-        except Exception as ai_err:
-            print(f"⚠️ n8n error: {ai_err}")
+        except Exception:
+            pass
 
-        if os.path.exists(file_path):
+        if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
-        print("✅ Готово!")
         return {
             "status": "success",
             "data": optimized_data,
@@ -122,8 +101,7 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
         }
 
     except Exception as e:
-        print("❌ Помилка:")
-        print(traceback.format_exc())
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
