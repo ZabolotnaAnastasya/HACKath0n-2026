@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post("/process-log")
 async def process_log(file: UploadFile = File(...), max_points: int = Query(500)):
     try:
+        print(f"🚀 Отримано файл: {file.filename}. Починаємо обробку...") #лог
         upload_dir = "data/uploads"
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, file.filename)
@@ -23,6 +24,7 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             f.write(await file.read())
 
         # 1. ПАРСИНГ
+        print("⏳ 1/5: Парсинг телеметрії...")  #лог
         parser = LogParser(file_path)
         gps_raw, imu_raw, _ = parser.parse_telemetry()
 
@@ -30,6 +32,7 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             raise HTTPException(status_code=400, detail="Incomplete telemetry data")
 
         # 2. ПІДГОТОВКА ДАНИХ ДЛЯ ФІЛЬТРАЦІЇ
+        print(f"⏳ 2/5: Підготовка даних (GPS точок: {len(gps_raw)}, IMU точок: {len(imu_raw)})...") #лог
         gps_enu_list = FlightProcessor.convert_to_local_system(gps_raw)
 
         # FlightProcessor відрізає частину точок (до зльоту), тому беремо тільки актуальні GPS
@@ -46,12 +49,15 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
 
         df_imu = pd.DataFrame(imu_raw)
 
-        # 3. АЛГОРИТМИ СВЯТОСЛАВА: ЗЛИття ТА ОПТИМІЗАЦІЯ
+        # 3. АЛГОРИТМИ ЗЛИття ТА ОПТИМІЗАЦІЯ
+        print("⏳ 3/5: Запуск NavigationFusion (Увага: це може зайняти до хвилини!)...")
         fusion = NavigationFusion()
         smart_trajectory = fusion.process_flight_data(df_imu, df_gps)
+        print("⏳ Згладжування сплайнами...")
         optimized_data = optimize_trajectory(smart_trajectory, target_points=max_points)
 
         # 4. АНАЛІТИКА ДЛЯ AI-АГЕНТА
+        print("⏳ 4/5: Розрахунок аналітики...")
         total_dist = 0
         R = 6371000
         for i in range(1, len(gps_raw)):
@@ -74,12 +80,15 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
             # "llm_response": "Аналіз готовий. Використано фільтрацію UKF (злиття GPS+IMU) та оптимізацію кубічними сплайнами."
         }
 
+        print("⏳ 5/5: Виклик n8n агента...")
         ai_report = get_ai_analysis(telemetry_data=analysis_block) # виклик n8n для генерації звіту ШІ
 
         # Видаляємо тимчасовий файл
         if os.path.exists(file_path):
             os.remove(file_path)
 
+
+        print("✅ Успіх! Відправляємо дані на фронтенд.")
         return {
             "status": "success",
             "data": optimized_data,
@@ -90,5 +99,6 @@ async def process_log(file: UploadFile = File(...), max_points: int = Query(500)
 
     except Exception as e:
         import traceback
+        print("❌ Помилка бекенду:")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))

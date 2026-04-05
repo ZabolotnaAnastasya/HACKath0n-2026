@@ -1,6 +1,6 @@
 import requests
 
-N8N_WEBHOOK_URL = "http://n8n:5678/webhook-test/analyze-telemetry"
+N8N_WEBHOOK_URL = "http://n8n:5678/webhook/analyze-telemetry"
 
 def get_ai_analysis(telemetry_data: dict) -> str:
     """
