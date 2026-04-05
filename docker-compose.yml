@@ -20,7 +20,7 @@ services:
       - "8000:8000"
     environment:
       - N8N_URL=http://n8n:5678/webhook/analyze-telemetry
-      - GEMINI_API_KEY=AIzaSyCMAmvi2AnVWhMGG7f3m7ByX-DpC5TOgqg
+      - GEMINI_API_KEY=AIzaSyBXUCobImAq46Gl4KTmc87KK0NyFuIyjgw
 
 volumes:
   n8n_data:
