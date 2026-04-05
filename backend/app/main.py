@@ -5,7 +5,6 @@ from app.api.v1.endpoints import router
 
 app = FastAPI(title="Drone Telemetry API - Hackathon 2026")
 
-# CORS налаштування
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,

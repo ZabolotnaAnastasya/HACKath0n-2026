@@ -4,14 +4,14 @@ from scipy.interpolate import CubicSpline
 
 def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
     """
-    Згладжує траєкторію за допомогою кубічних сплайнів
-    та повертає структуру, яку вимагає Ваня.
+    Оптимізує траєкторію через кубічні сплайни.
+    
+    Зменшує кількість точок, зберігаючи фізичну неперервність.
     """
     n = len(trajectory)
     if n <= target_points or target_points < 3:
         return trajectory
 
-    # 1. Сортуємо та прибираємо дублікати за часом
     unique_traj = []
     seen_times = set()
     for p in sorted(trajectory, key=lambda x: x['time_s']):
@@ -22,7 +22,6 @@ def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
     n_unique = len(unique_traj)
     essential_indices = {0, n_unique - 1}
 
-    # 2. Вибираємо найважливіші точки на основі прискорення (importance)
     scores = []
     for i in range(1, n_unique - 1):
         scores.append((i, unique_traj[i].get('importance', 0)))
@@ -38,12 +37,9 @@ def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
 
     t_skel = np.array([p['time_s'] for p in skeleton_points])
 
-    # 3. Створюємо сплайни для всіх полів
-    # Координати ENU
     coords_skel = np.array([[p['x'], p['y'], p['z']] for p in skeleton_points])
     cs = CubicSpline(t_skel, coords_skel, bc_type='natural')
 
-    # Гео-координати (lat, lon, alt_abs) — ТЕ, ЩО ТРЕБА ВАНІ
     lats_skel = np.array([p.get('lat', 0.0) for p in skeleton_points])
     lons_skel = np.array([p.get('lon', 0.0) for p in skeleton_points])
     alts_skel = np.array([p.get('alt_abs', 0.0) for p in skeleton_points])
@@ -52,7 +48,6 @@ def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
     cs_lon = CubicSpline(t_skel, lons_skel, bc_type='natural')
     cs_alt = CubicSpline(t_skel, alts_skel, bc_type='natural')
 
-    # 4. Генеруємо фінальну сітку
     t_final = np.linspace(t_skel[0], t_skel[-1], target_points)
 
     coords_final = cs(t_final)
@@ -60,10 +55,8 @@ def optimize_trajectory(trajectory: list, target_points: int = 100) -> list:
     lons_final = cs_lon(t_final)
     alts_final = cs_alt(t_final)
 
-    # Швидкість (перша похідна сплайна)
     velocities = np.linalg.norm(cs(t_final, 1), axis=1)
 
-    # 5. Формуємо вихідний JSON
     optimized_output = []
     for i in range(len(t_final)):
         optimized_output.append({

@@ -13,7 +13,6 @@ export const MapController = () => {
         if (!targetPoint) return;
         if (targetPoint.lat === undefined || targetPoint.lon === undefined) return;
 
-        // Use setView to maintain current zoom level while centering on point
         map.setView([targetPoint.lat, targetPoint.lon], map.getZoom(), { animate: true });
     }, [activePoint, targetPoint, map]);
 

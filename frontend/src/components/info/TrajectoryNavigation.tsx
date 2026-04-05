@@ -18,10 +18,8 @@ export const TrajectoryNavigation = () => {
         const { scaledPoints } = scaleTrajectoryToGrid(trajectoryArray);
         const firstScaledPoint = scaledPoints[0];
         
-        // Set active point
         setActivePoint(firstPoint);
         
-        // Set camera position and target to first point
         if (firstScaledPoint) {
             setCameraPosition({
                 x: firstScaledPoint.x + 5,
@@ -43,10 +41,8 @@ export const TrajectoryNavigation = () => {
         const { scaledPoints } = scaleTrajectoryToGrid(trajectoryArray);
         const lastScaledPoint = scaledPoints[scaledPoints.length - 1];
         
-        // Set active point
         setActivePoint(lastPoint);
         
-        // Set camera position and target to last point
         if (lastScaledPoint) {
             setCameraPosition({
                 x: lastScaledPoint.x + 5,
@@ -61,7 +57,6 @@ export const TrajectoryNavigation = () => {
         }
     };
 
-    // Get current point index
     const getCurrentPointIndex = () => {
         if (!activePoint || trajectoryArray.length === 0) return 0;
         return trajectoryArray.findIndex(p => 

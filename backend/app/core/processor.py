@@ -1,8 +1,19 @@
 import math
 
 class FlightProcessor:
+    """
+    Конвертер WGS-84 координат в локальну ENU систему.
+    
+    Рахує відносно точки зльоту.
+    """
+    
     @staticmethod
     def convert_to_local_system(gps_points):
+        """
+        Трансформує географічні координати в декартові.
+        
+        Повертає список точок з ENU координатами.
+        """
         if not gps_points:
             return []
 

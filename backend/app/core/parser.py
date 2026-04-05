@@ -1,10 +1,23 @@
 from pymavlink import mavutil
 
 class LogParser:
+    """
+    Парсер MAVLink .BIN файлів через pymavlink.
+    
+    Витягує POS, GPS, IMU, ATT повідомлення.
+    Фільтрує GPS зі статусом ≥3.
+    Конвертує TimeUS в секунди.
+    """
+
     def __init__(self, file_path: str):
         self.file_path = file_path
 
     def parse_telemetry(self):
+        """
+        Розбиває MAVLink лог на GPS, IMU та attitude дані.
+        
+        Повертає кортеж з трьох списків dict.
+        """
         mlog = mavutil.mavlink_connection(self.file_path)
         gps_data = []
         imu_data = []

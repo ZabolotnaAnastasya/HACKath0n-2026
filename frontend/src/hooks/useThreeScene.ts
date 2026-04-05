@@ -63,7 +63,6 @@ export const useThreeScene = (): UseThreeSceneReturn => {
     useEffect(() => {
         if (!mountRef.current) return;
 
-        console.log("[ThreeScene] Initializing scene");
         const { scene, camera, renderer, controls, raycaster } = createScene({
             container: mountRef.current,
             cameraPosition,
@@ -169,7 +168,6 @@ export const useThreeScene = (): UseThreeSceneReturn => {
         const controls = controlsRef.current;
         if (!scene) return;
 
-        console.log("[ThreeScene] Updating trajectoryArray, setting isLoading = true");
         setIsLoading(true);
 
         spheresRef.current.forEach((sphere) => {
@@ -246,7 +244,6 @@ export const useThreeScene = (): UseThreeSceneReturn => {
 
         updateSphereColors();
         setIsLoading(false);
-        console.log("[ThreeScene] Trajectory update complete, isLoading = false");
     }, [trajectoryArray]);
 
     useEffect(() => {
@@ -257,8 +254,6 @@ export const useThreeScene = (): UseThreeSceneReturn => {
         const controls = controlsRef.current;
         if (!controls || !activePoint || trajectoryArray.length === 0) return;
 
-        console.log("[ThreeScene] Updating camera target to active point:", activePoint);
-        
         const { scaledPoints, axisScales } = scaleTrajectoryToGrid(trajectoryArray);
         const gridBounds = calculateGridBounds(trajectoryArray, axisScales, 0.15);
         const clampedPoints = clampTrajectoryToBounds(scaledPoints, gridBounds);

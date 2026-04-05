@@ -3,6 +3,13 @@ import numpy as np
 from .engine import NavigationEngine
 
 class NavigationFusion:
+    """
+    Sensor Fusion алгоритм для GPS/IMU даних.
+    
+    Калібрує IMU, виконує predict-correct цикл.
+    Фільтрує аномалії через alpha-компенсацію.
+    """
+
     def __init__(self):
         self.engine = NavigationEngine()
         self.is_calibrated = False
@@ -10,6 +17,11 @@ class NavigationFusion:
         self.prev_gps_time = None
 
     def process_flight_data(self, imu_df: pd.DataFrame, gps_df: pd.DataFrame):
+        """
+        Обробляє IMU та GPS дані в єдину траєкторію.
+        
+        Повертає список точок з злитими даними.
+        """
         if gps_df.empty or imu_df.empty:
             return []
 
@@ -33,7 +45,7 @@ class NavigationFusion:
         imu_filtered['accel_norm'] = np.sqrt(
             imu_filtered['AccX']**2 +
             imu_filtered['AccY']**2 +
-            (imu_filtered['AccZ'] - 9.81)**2
+            (imu_filtered['AccZ'] + 9.81)**2
         )
 
         combined = pd.merge_asof(
@@ -68,9 +80,9 @@ class NavigationFusion:
                 "z": float(pos[2]),
                 "speed": float(speed),
                 "time_s": float(row['TimeUS'] / 1e6),
-                "lat": row.get('lat', 0.0),        # ДЛЯ ВАНІ
-                "lon": row.get('lng', 0.0),        # ДЛЯ ВАНІ
-                "alt_abs": row.get('alt', 0.0),    # ДЛЯ ВАНІ
+                "lat": row.get('lat', 0.0),
+                "lon": row.get('lng', 0.0),
+                "alt_abs": row.get('alt', 0.0),
                 "is_gps_step": is_gps_update,
                 "importance": float(row['accel_norm'])
             })
