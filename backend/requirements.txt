@@ -1,0 +1,10 @@
+pandas
+pymavlink
+fastapi
+uvicorn
+numpy
+scipy
+pydantic
+python-multipart
+requests
+dotenv

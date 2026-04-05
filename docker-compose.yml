@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    depends_on:
+      - backend
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - N8N_URL=http://n8n:5678/webhook/analyze-telemetry
+      - GEMINI_API_KEY=AIzaSyDq5WUkWgowk4V43_DWATj1Fyvqs7VCt_U
+
+volumes:
+  n8n_data:

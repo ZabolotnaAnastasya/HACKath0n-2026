@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Віртуальне середовище
+.venv/
+venv/
+env/
+
+# IDE та редактори
+.idea/
+.vscode/
+*.swp
+
+# Локальні дані та логи (ЩОБ НЕ ПУШИТИ ВАЖКІ ФАЙЛИ)
+data/uploads/*
+*.BIN
+*.csv
+trajectory_output.json
+
+# ОС файли
+.DS_Store
+Thumbs.db
+
+# Frontend (Node.js/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+# Editor directories and files (frontend-specific)
+frontend/.vscode/*
+!frontend/.vscode/extensions.json
+frontend/.idea
+frontend/*.suo
+frontend/*.ntvs*
+frontend/*.njsproj
+frontend/*.sln
+frontend/*.sw?
