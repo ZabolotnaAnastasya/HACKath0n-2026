@@ -53,30 +53,36 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
                     <>
                         <button
                             onClick={handleUploadClick}
-                            disabled={isUploading}
+                            disabled={isUploading || uploadError !== null}
                             className="bg-white text-black px-4 py-2 rounded hover:scale-105 hover:opacity-80 hover:cursor-pointer transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isUploading ? "Loading..." : `Load ${tempFile.name}`}
+                            {isUploading ? "Loading..." : uploadError ? `Load ${tempFile.name}` : `Load ${tempFile.name}`}
                         </button>
 
-                        <div className="w-1/4 flex flex-col items-center gap-2">
-                            <span>Max points: {maxPoints}</span>
-                            <input
-                                type="range"
-                                min={50}
-                                max={3000}
-                                step={50}
-                                value={maxPoints}
-                                onChange={handleSliderChange}
-                                onClick={e => e.stopPropagation()}
-                                className="w-full accent-white cursor-pointer hover:scale-105 transition-all duration-100"
-                            />
-                        </div>
+                        {/* disable upload button if error */}
+
+                        {
+                            !uploadError &&
+                            <div className="w-1/4 flex flex-col items-center gap-2">
+                                <span>Max points: {maxPoints}</span>
+                                <input
+                                    type="range"
+                                    min={50}
+                                    max={3000}
+                                    step={50}
+                                    value={maxPoints}
+                                    onChange={handleSliderChange}
+                                    onClick={e => e.stopPropagation()}
+                                    className="w-full accent-white cursor-pointer hover:scale-105 transition-all duration-100"
+                                />
+                            </div>
+                        }
                     </>
                 )}
 
+                {/* show upload error */}
                 {uploadError && (
-                    <p className="text-red-500 mt-2">server or file problem</p>
+                    <p className="text-red-500 mt-2">Server or file problem occured</p>
                 )}
             </div>
         </div>

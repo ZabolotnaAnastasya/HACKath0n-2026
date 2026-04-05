@@ -10,12 +10,13 @@ interface UploadNewFileButtonProps {
 export const UploadNewFileButton = ({ className = "" }: UploadNewFileButtonProps) => {
     const { clearFile } = useFileLoadStore();
     const { clearUpload } = useUploadStore();
-    const { reset } = useTrajectoryStore();
+    const { reset, clearTrajectory } = useTrajectoryStore();
 
     const handleClick = () => {
         clearFile();
         clearUpload();
         reset();
+        clearTrajectory(); // reset stores on new file
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {

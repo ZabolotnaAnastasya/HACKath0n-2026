@@ -21,6 +21,7 @@ interface TrajectoryActions {
     triggerReplay: () => void;
     reset: () => void;
     setIsLoading: (val: boolean) => void;
+    clearTrajectory: () => void;
 }
 
 const defaultTrajectory: TrajectoryPoint[] =[]
@@ -93,5 +94,11 @@ export const useTrajectoryStore = create<
             activePoint: null
         }),
 
-    setIsLoading: (val: boolean) => set({ isLoading: val })
+    setIsLoading: (val: boolean) => set({ isLoading: val }),
+
+    clearTrajectory: () => set({
+        trajectoryArray: defaultTrajectory,
+        activePoint: null,
+        isLoading: false
+    })
 }));

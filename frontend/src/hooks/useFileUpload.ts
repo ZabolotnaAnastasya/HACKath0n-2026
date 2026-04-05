@@ -16,28 +16,37 @@ interface UseFileUploadReturn {
 }
 
 export const useFileUpload = (): UseFileUploadReturn => {
-    const { setFile } = useFileLoadStore();
+    const { setFile, clearFile } = useFileLoadStore();
     const { uploadFile, isUploading, error: uploadError, clearUpload } = useUploadStore();
     const { maxPoints } = useMaxPointsStore();
     const setIsLoading = useTrajectoryStore((state) => state.setIsLoading);
     const setActivePoint = useTrajectoryStore((state) => state.setActivePoint);
+    const clearTrajectory = useTrajectoryStore((state) => state.clearTrajectory);
     const [tempFile, setTempFile] = useState<File | null>(null);
     const [isUploadStarted, setIsUploadStarted] = useState(false);
+
+    // reset stores on new file selection
+    const resetAllStores = useCallback(() => {
+        clearUpload();
+        clearTrajectory();
+        clearFile();
+        setTempFile(null);
+        setIsUploadStarted(false);
+        setIsLoading(false);
+    }, [clearUpload, clearTrajectory, clearFile, setIsLoading]);
 
     const onDrop = useCallback(
         (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
             if (acceptedFiles.length > 0) {
+                // reset stores on new file
+                resetAllStores();
                 setTempFile(acceptedFiles[0]);
-                setIsUploadStarted(false);
-                clearUpload();
             }
             rejectedFiles.forEach(() => {
-                setTempFile(null);
-                setIsUploadStarted(false);
-                clearUpload();
+                resetAllStores();
             });
         },
-        [clearUpload]
+        [resetAllStores]
     );
 
     const startUpload = useCallback((onSuccess?: () => void) => {
@@ -47,6 +56,7 @@ export const useFileUpload = (): UseFileUploadReturn => {
         setIsLoading(true);
 
         uploadFile(tempFile, maxPoints, (trajectoryData) => {
+            // only update trajectory on success
             useTrajectoryStore.setState({ trajectoryArray: trajectoryData });
             setActivePoint(trajectoryData[0] || null);
             setIsLoading(false);
@@ -55,10 +65,8 @@ export const useFileUpload = (): UseFileUploadReturn => {
     }, [tempFile, setFile, uploadFile, maxPoints, setIsLoading, setActivePoint]);
 
     const clearTempFile = useCallback(() => {
-        setTempFile(null);
-        setIsUploadStarted(false);
-        clearUpload();
-    }, [clearUpload]);
+        resetAllStores();
+    }, [resetAllStores]);
 
     return {
         tempFile,

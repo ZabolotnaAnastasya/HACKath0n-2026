@@ -38,8 +38,16 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
     try {
       const response: TrajectoryResponse = await fetchTrajectory(file, maxPoints);
 
-      if (response.status === "error" || !response.data) {
-        throw new Error(response.message || "Failed to process file");
+      // show upload error if response status is not success or data is empty
+      if (response.status === "error" || !response.data || response.data.length === 0) {
+        const errorMessage = response.status === "error" 
+          ? response.message || "Failed to process file"
+          : "No trajectory data received";
+        set({
+          isUploading: false,
+          error: errorMessage,
+        });
+        return; // do not render dashboard if error
       }
 
       const trajectoryData: TrajectoryPoint[] = response.data.map((point) => ({
@@ -67,9 +75,11 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
         });
       }
 
+      // only update trajectory on success
       onSuccess(trajectoryData);
       set({ isUploading: false });
     } catch (err) {
+      // show upload error for any network or parsing errors
       set({
         isUploading: false,
         error: err instanceof Error ? err.message : "Unknown error occurred",
