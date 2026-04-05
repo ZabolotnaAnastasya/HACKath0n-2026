@@ -56,13 +56,13 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
       if (response.analysis) {
         set({
           analysis: {
-            maxHorizontalSpeed: response.analysis.max_horizontal_speed,
-            maxVerticalSpeed: response.analysis.max_vertical_speed,
-            maxAcceleration: response.analysis.max_acceleration,
-            maxClimb: response.analysis.max_climb,
-            totalDistance: response.analysis.total_distance,
-            totalDuration: response.analysis.total_duration,
-            llmResponse: response.analysis.llm_response,
+            maxHorizontalSpeed: response.analysis.max_horizontal_speed_ms,
+            maxVerticalSpeed: response.analysis.max_vertical_speed_ms,
+            maxAcceleration: response.analysis.max_acceleration_m_s2,
+            maxClimb: response.analysis.max_climb_ms,
+            totalDistance: response.analysis.total_distance_m,
+            totalDuration: response.analysis.total_duration_sec,
+            llmResponse: response.ai_analysis || "",
           },
         });
       }

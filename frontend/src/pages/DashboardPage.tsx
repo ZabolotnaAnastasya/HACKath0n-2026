@@ -34,7 +34,7 @@ const AnalysisSection = () => {
                         </div>
                         <div className="bg-black border border-white p-2 rounded-lg">
                             <p className="text-gray-400 text-xs mb-1">Max Climb</p>
-                            <p className="text-xl font-bold">{analysis.maxClimb.toFixed(2)} m</p>
+                            <p className="text-xl font-bold">{analysis.maxClimb.toFixed(2)} m/s</p>
                         </div>
                         <div className="bg-black border border-white p-2 rounded-lg">
                             <p className="text-gray-400 text-xs mb-1">Total Distance</p>

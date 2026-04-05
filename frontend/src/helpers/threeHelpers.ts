@@ -349,8 +349,8 @@ export const createDataDrivenGridRulers = (
     const xAxisGroup = new THREE.Group();
     const xAxisGeometry = new THREE.BufferGeometry();
     xAxisGeometry.setFromPoints([
-        new THREE.Vector3(gridBounds.minX, 0, 0),
-        new THREE.Vector3(gridBounds.maxX, 0, 0)
+        new THREE.Vector3(gridBounds.minX, 0, 0.02),
+        new THREE.Vector3(gridBounds.maxX, 0, 0.02)
     ]);
     const xAxisMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
     const xAxisLine = new THREE.Line(xAxisGeometry, xAxisMaterial);
@@ -368,8 +368,8 @@ export const createDataDrivenGridRulers = (
         
         const tickGeometry = new THREE.BufferGeometry();
         tickGeometry.setFromPoints([
-            new THREE.Vector3(sceneX, 0, -0.3),
-            new THREE.Vector3(sceneX, 0, 0.3)
+            new THREE.Vector3(sceneX, 0, -0.3 + 0.02),
+            new THREE.Vector3(sceneX, 0, 0.3 + 0.02)
         ]);
         const tickMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
         const tickLine = new THREE.Line(tickGeometry, tickMaterial);
@@ -385,8 +385,8 @@ export const createDataDrivenGridRulers = (
     const yAxisGroup = new THREE.Group();
     const yAxisGeometry = new THREE.BufferGeometry();
     yAxisGeometry.setFromPoints([
-        new THREE.Vector3(0, gridBounds.minY, 0),
-        new THREE.Vector3(0, gridBounds.maxY, 0)
+        new THREE.Vector3(0, gridBounds.minY, 0.02),
+        new THREE.Vector3(0, gridBounds.maxY, 0.02)
     ]);
     const yAxisMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
     const yAxisLine = new THREE.Line(yAxisGeometry, yAxisMaterial);
@@ -404,8 +404,8 @@ export const createDataDrivenGridRulers = (
         
         const tickGeometry = new THREE.BufferGeometry();
         tickGeometry.setFromPoints([
-            new THREE.Vector3(-0.3, sceneY, 0),
-            new THREE.Vector3(0.3, sceneY, 0)
+            new THREE.Vector3(-0.3, sceneY, 0.02),
+            new THREE.Vector3(0.3, sceneY, 0.02)
         ]);
         const tickMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
         const tickLine = new THREE.Line(tickGeometry, tickMaterial);
@@ -435,38 +435,91 @@ interface CreateSphereParams {
     index: number;
     totalPoints: number;
     scaledPosition: THREE.Vector3;
+    normalizedTime: number;
 }
 
-export const createSphere = ({ point, index, totalPoints, scaledPosition }: CreateSphereParams): THREE.Mesh => {
-    const geometry = new THREE.SphereGeometry(0.0475, 12, 12);
-    let color = 0xffffff;
-    if (index === 0) color = 0x0000ff;
-    else if (index === totalPoints - 1) color = 0xff0000;
+export const createSphere = ({ point, index, totalPoints, scaledPosition, normalizedTime }: CreateSphereParams): THREE.Mesh => {
+    const geometry = new THREE.SphereGeometry(0.025, 8, 8);
 
-    const material = new THREE.MeshBasicMaterial({ color });
+    let r, g, b;
+    if (normalizedTime < 0.5) {
+        const localT = normalizedTime * 2;
+        r = localT;
+        g = localT * 0.8;
+        b = 1 - localT;
+    } else {
+        const localT = (normalizedTime - 0.5) * 2;
+        r = 1;
+        g = 0.8 * (1 - localT);
+        b = 0;
+    }
+
+    const color = new THREE.Color(r, g, b);
+
+    if (index === 0) color.set(0x0000ff);
+    else if (index === totalPoints - 1) color.set(0xff0000);
+
+    const material = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.7
+    });
     const sphere = new THREE.Mesh(geometry, material);
 
     sphere.position.copy(scaledPosition);
 
     sphere.userData = {
         ...point,
-        baseColor: color,
+        baseColor: color.getHex(),
         id: `${point.x}_${point.y}_${point.z}_${point.time_s}`
     };
 
     return sphere;
 };
 
-export const createTrajectoryLine = (scaledPoints: THREE.Vector3[]): THREE.Line | null => {
-    if (scaledPoints.length < 2) return null;
+export const createColoredTrajectoryLine = (
+    points: TrajectoryPoint[],
+    scaledPoints: THREE.Vector3[]
+): THREE.Line | null => {
+    if (points.length < 2 || scaledPoints.length < 2) return null;
 
     const positions: number[] = [];
-    scaledPoints.forEach(p => positions.push(p.x, p.y, p.z));
+    const colors: number[] = [];
+    const minTime = Math.min(...points.map(p => p.time_s));
+    const maxTime = Math.max(...points.map(p => p.time_s));
+    const timeRange = maxTime - minTime || 1;
+
+    for (let i = 0; i < points.length; i++) {
+        const p = scaledPoints[i];
+        positions.push(p.x, p.y, p.z);
+
+        const normalizedTime = (points[i].time_s - minTime) / timeRange;
+
+        let r, g, b;
+        if (normalizedTime < 0.5) {
+            const localT = normalizedTime * 2;
+            r = localT;
+            g = localT * 0.8;
+            b = 1 - localT;
+        } else {
+            const localT = (normalizedTime - 0.5) * 2;
+            r = 1;
+            g = 0.8 * (1 - localT);
+            b = 0;
+        }
+        colors.push(r, g, b);
+    }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 
-    return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffffff }));
+    const material = new THREE.LineBasicMaterial({
+        vertexColors: true,
+        linewidth: 2
+    });
+
+    return new THREE.Line(geometry, material);
 };
 
 export const createTrajectoryTubes = (points: TrajectoryPoint[], scaledPoints: THREE.Vector3[]): THREE.Mesh[] => {

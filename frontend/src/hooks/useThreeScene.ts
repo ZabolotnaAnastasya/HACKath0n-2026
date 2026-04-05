@@ -5,7 +5,7 @@ import {
     createScene,
     createGrid,
     createSphere,
-    createTrajectoryTubes,
+    createColoredTrajectoryLine,
     getMousePosition,
     updateSphereColor,
     getPointId,
@@ -25,7 +25,7 @@ interface UseThreeSceneReturn {
 export const useThreeScene = (): UseThreeSceneReturn => {
     const mountRef = useRef<HTMLDivElement>(null);
     const spheresRef = useRef<THREE.Mesh[]>([]);
-    const tubesRef = useRef<THREE.Mesh[]>([]);
+    const lineRef = useRef<THREE.Line | null>(null);
     const hoveredRef = useRef<THREE.Mesh | null>(null);
     const animationIdRef = useRef<number | null>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -178,11 +178,8 @@ export const useThreeScene = (): UseThreeSceneReturn => {
             (sphere.material as THREE.Material).dispose();
         });
 
-        tubesRef.current.forEach((tube) => {
-            scene.remove(tube);
-            tube.geometry.dispose();
-            (tube.material as THREE.Material).dispose();
-        });
+        lineRef.current?.geometry.dispose();
+        (lineRef.current?.material as THREE.Material)?.dispose();
 
         const oldLine = scene.children.find((child) => child instanceof THREE.Line);
         if (oldLine) {
@@ -215,20 +212,27 @@ export const useThreeScene = (): UseThreeSceneReturn => {
         scene.add(grid);
         gridRef.current = grid;
 
+        const minTime = Math.min(...trajectoryArray.map(p => p.time_s));
+        const maxTime = Math.max(...trajectoryArray.map(p => p.time_s));
+        const timeRange = maxTime - minTime || 1;
+
         const spheres: THREE.Mesh[] = trajectoryArray.map((point, index) =>
             createSphere({ 
                 point, 
                 index, 
                 totalPoints: trajectoryArray.length,
-                scaledPosition: clampedPoints[index]
+                scaledPosition: clampedPoints[index],
+                normalizedTime: (point.time_s - minTime) / timeRange
             })
         );
         spheres.forEach((sphere) => scene.add(sphere));
         spheresRef.current = spheres;
 
-        const tubes = createTrajectoryTubes(trajectoryArray, clampedPoints);
-        tubes.forEach((tube) => scene.add(tube));
-        tubesRef.current = tubes;
+        const line = createColoredTrajectoryLine(trajectoryArray, clampedPoints);
+        if (line) {
+            scene.add(line);
+            lineRef.current = line;
+        }
 
         if (trajectoryArray.length > 0 && !hasSetInitialPointRef.current) {
             const firstPoint = trajectoryArray[0];

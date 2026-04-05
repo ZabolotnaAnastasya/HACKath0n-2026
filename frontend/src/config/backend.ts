@@ -15,14 +15,14 @@ export interface TrajectoryResponse {
     alt_abs: number;
   }>;
   analysis?: {
-    max_horizontal_speed: number;
-    max_vertical_speed: number;
-    max_acceleration: number;
-    max_climb: number;
-    total_distance: number;
-    total_duration: number;
-    llm_response: string;
+    max_horizontal_speed_ms: number;
+    max_vertical_speed_ms: number;
+    max_acceleration_m_s2: number;
+    max_climb_ms: number;
+    total_distance_m: number;
+    total_duration_sec: number;
   };
+  ai_analysis?: string;
   meta?: {
     filename: string;
   };
