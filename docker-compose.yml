@@ -5,16 +5,18 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - "3000:3000"
+    environment:
+      - VITE_BACKEND_URL=http://backend:8000
     depends_on:
       - backend
 
   n8n:
-      image: docker.n8n.io/n8nio/n8n
-      ports:
-        - "5678:5678"
-      volumes:
-        - n8n_data:/home/node/.n8n
+    image: docker.n8n.io/n8nio/n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
 
   backend:
     build: ./backend
