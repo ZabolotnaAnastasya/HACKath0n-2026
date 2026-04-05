@@ -1,6 +1,6 @@
 import requests
 
-N8N_WEBHOOK_URL = "http://n8n:5678/webhook/analyze-telemetry"
+N8N_WEBHOOK_URL = "http://n8n:5678/webhook-test/analyze-telemetry"
 
 def get_ai_analysis(telemetry_data: dict) -> str:
     """
@@ -17,4 +17,6 @@ def get_ai_analysis(telemetry_data: dict) -> str:
     
     except requests.exceptions.RequestException as e:
         print(f"Помилка зв'язку з n8n: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"ДЕТАЛІ ВІД N8N: {e.response.text}")
         return "Вибачте, сталася помилка при генерації звіту ШІ."
