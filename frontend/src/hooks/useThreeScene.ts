@@ -10,7 +10,6 @@ import {
     updateSphereColor,
     getPointId,
     scaleTrajectoryToGrid,
-    setupCameraForTopView,
     createDataDrivenGridRulers,
     calculateGridBounds,
     clampTrajectoryToBounds

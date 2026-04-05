@@ -82,6 +82,7 @@ export const setupCameraForTopView = (gridSize: number = 20): CameraPosition => 
 interface CreateSceneParams {
     container: HTMLDivElement;
     cameraPosition: CameraPosition;
+    onCameraChange?: (position: CameraPosition) => void;
 }
 
 interface CreateSceneReturn {
@@ -92,7 +93,7 @@ interface CreateSceneReturn {
     raycaster: THREE.Raycaster;
 }
 
-export const createScene = ({ container, cameraPosition }: CreateSceneParams): CreateSceneReturn => {
+export const createScene = ({ container, cameraPosition, onCameraChange: _onCameraChange }: CreateSceneParams): CreateSceneReturn => {
     const width = container.clientWidth;
     const height = container.clientHeight;
 
@@ -199,7 +200,7 @@ interface AxisScales {
 }
 
 export const createDataDrivenGridRulers = (
-    scaledPoints?: THREE.Vector3[],
+    _scaledPoints?: THREE.Vector3[],
     originalPoints?: TrajectoryPoint[],
     axisScales?: AxisScales,
     providedGridBounds?: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }
@@ -262,12 +263,6 @@ export const createDataDrivenGridRulers = (
             maxZ: visualMaxZ
         };
     }
-    
-    const maxSceneRange = Math.max(
-        gridBounds.maxX - gridBounds.minX,
-        gridBounds.maxY - gridBounds.minY,
-        gridBounds.maxZ - gridBounds.minZ
-    );
     
     const xDataRange = (rawMaxX - rawMinX) * (1 + visualPadding);
     const yDataRange = (rawMaxY - rawMinY) * (1 + visualPadding);
